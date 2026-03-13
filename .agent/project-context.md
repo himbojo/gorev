@@ -76,9 +76,13 @@ This generates a 1M-entry CRL in-memory, tests the full parse → Redis → OCSP
 - A robust, repeatable Multi-CA E2E testing framework has been scripted and verified. No known bugs exist.
 - A `.dockerignore` file excludes the compiled binary, test data, and git history from Docker build context.
 
+- **MANDATORY AGENT RULE:** After *every* iteration of feature development or code modification, you MUST explicitly update the `.gitignore`, `.agent/project-context.md`, and `README.md` to perfectly reflect the current state of the application. Do not leave documentation out of sync.
+
+## Agent Roles
+Specialized AI agent roles (Developer, Tester, DevOps, Security) are defined in [.agent/roles.md](file:///home/jordan/src/gorev/.agent/roles.md). Agents should assume these roles as appropriate to apply specific domain expertise.
+
 ## Development Guidelines
 - All Go code must follow [Effective Go](https://go.dev/doc/effective_go) principles, including proper formatting, idiomatic naming, and simplified control structures.
-- **MANDATORY AGENT RULE:** After *every* iteration of feature development or code modification, you MUST explicitly update the `.gitignore`, `.agent/project-context.md`, and `README.md` to perfectly reflect the current state of the application. Do not leave documentation out of sync.
 - **MANDATORY TESTING RULE:** After *every* code change, you MUST run the full verification suite before considering the work complete:
   1. `go build -o /dev/null ./...` — ensure the project compiles
   2. `go vet ./...` — run the Go static analyser
