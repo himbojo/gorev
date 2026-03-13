@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,18 +19,20 @@ import (
 )
 
 type Server struct {
-	db       *database.DB
-	dataDir  string
-	mu       sync.RWMutex
-	caCerts   []*x509.Certificate
-	respCerts []*x509.Certificate
-	respKeys  []crypto.Signer
+	db           *database.DB
+	dataDir      string
+	ocspPrefixes []string
+	mu           sync.RWMutex
+	caCerts      []*x509.Certificate
+	respCerts    []*x509.Certificate
+	respKeys     []crypto.Signer
 }
 
-func New(db *database.DB, dataDir string) *Server {
+func New(db *database.DB, dataDir string, ocspPrefixes []string) *Server {
 	return &Server{
-		db:      db,
-		dataDir: dataDir,
+		db:           db,
+		dataDir:      dataDir,
+		ocspPrefixes: ocspPrefixes,
 	}
 }
 
@@ -58,8 +61,15 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 		reqBytes, err = io.ReadAll(r.Body)
 	case http.MethodGet:
 		b64 := r.URL.Path
-		if len(b64) > 6 && b64[:6] == "/ocsp/" {
-			b64 = b64[6:]
+		for _, pfx := range s.ocspPrefixes {
+			p := pfx
+			if !strings.HasSuffix(p, "/") {
+				p += "/"
+			}
+			if len(b64) > len(p) && b64[:len(p)] == p {
+				b64 = b64[len(p):]
+				break
+			}
 		}
 		reqBytes, err = base64.StdEncoding.DecodeString(b64)
 	default:

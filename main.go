@@ -30,12 +30,21 @@ func main() {
 		dataDir = "."
 	}
 
+	ocspEndpoints := parseEndpoints("ENDPOINTS_OCSP", "/ocsp")
+	crlEndpoints := parseEndpoints("ENDPOINTS_CRL", "/crls")
+	caEndpoints := parseEndpoints("ENDPOINTS_CA", "/cas")
+	chainEndpoints := parseEndpoints("ENDPOINTS_CHAIN", "")
+
 	fmt.Printf("Starting gorev\n")
 	fmt.Printf("Redis Address: %s\n", redisAddr)
 	fmt.Printf("Data Directory: %s\n", dataDir)
+	fmt.Printf("OCSP Endpoints: %v\n", ocspEndpoints)
+	fmt.Printf("CRL Endpoints: %v\n", crlEndpoints)
+	fmt.Printf("CA Endpoints: %v\n", caEndpoints)
+	fmt.Printf("Chain Endpoints: %v\n", chainEndpoints)
 
 	db := database.New(redisAddr)
-	srv := server.New(db, dataDir)
+	srv := server.New(db, dataDir, ocspEndpoints)
 
 	reload := func() {
 		log.Println("Reloading certificates and CRLs from", dataDir)
@@ -160,16 +169,78 @@ func main() {
 	}
 	defer w.Close()
 
-	http.HandleFunc("/ocsp", srv.HandleOCSP)
-	http.HandleFunc("/ocsp/", srv.HandleOCSP)
+	// Register OCSP endpoints
+	for _, ep := range ocspEndpoints {
+		http.HandleFunc(ep, srv.HandleOCSP)
+		route := ep
+		if !strings.HasSuffix(route, "/") {
+			route += "/"
+		}
+		http.HandleFunc(route, srv.HandleOCSP)
+	}
 
-	fs := http.FileServer(http.Dir(dataDir))
-	http.Handle("/", fs)
-	http.Handle("/CRL/", http.StripPrefix("/CRL/", fs))
+	// Register CRL endpoints
+	crlDir := filepath.Join(dataDir, "crls")
+	for _, ep := range crlEndpoints {
+		route := ep
+		if !strings.HasSuffix(route, "/") {
+			route += "/"
+		}
+		fs := http.FileServer(http.Dir(crlDir))
+		http.Handle(route, http.StripPrefix(route, fs))
+	}
+
+	// Register CA endpoints
+	caDir := filepath.Join(dataDir, "cas")
+	for _, ep := range caEndpoints {
+		route := ep
+		if !strings.HasSuffix(route, "/") {
+			route += "/"
+		}
+		fs := http.FileServer(http.Dir(caDir))
+		http.Handle(route, http.StripPrefix(route, fs))
+	}
+
+	// Register Chain endpoints (same source as CAs)
+	for _, ep := range chainEndpoints {
+		route := ep
+		if !strings.HasSuffix(route, "/") {
+			route += "/"
+		}
+		fs := http.FileServer(http.Dir(caDir))
+		http.Handle(route, http.StripPrefix(route, fs))
+	}
 
 	port := "8080"
 	fmt.Printf("Listening on :%s\n", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+// parseEndpoints reads a comma-separated list of URL paths from the given
+// environment variable. If the variable is unset or empty, fallback is used.
+// An empty fallback means the endpoint type is disabled by default.
+func parseEndpoints(envVar, fallback string) []string {
+	raw := os.Getenv(envVar)
+	if raw == "" {
+		if fallback == "" {
+			return nil
+		}
+		raw = fallback
+	}
+
+	parts := strings.Split(raw, ",")
+	var endpoints []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if !strings.HasPrefix(p, "/") {
+			p = "/" + p
+		}
+		endpoints = append(endpoints, p)
+	}
+	return endpoints
 }

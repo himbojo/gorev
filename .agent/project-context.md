@@ -26,6 +26,10 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
 - **Environment Variables**:
   - `REDIS_ADDR`: DNS/IP and port for the Redis instance (default: `localhost:6379`).
   - `DATA_DIR`: Directory where certificates and CRLs reside (default: `.`).
+  - `ENDPOINTS_OCSP`: Comma-separated OCSP handler paths (default: `/ocsp`).
+  - `ENDPOINTS_CRL`: Comma-separated CRL file server paths (default: `/crls`).
+  - `ENDPOINTS_CA`: Comma-separated CA certificate file server paths (default: `/cas`).
+  - `ENDPOINTS_CHAIN`: Comma-separated CA chain file server paths (default: disabled).
 
 ## Known Artifacts/Test Data
 The project expects files strictly separated in the data directory.

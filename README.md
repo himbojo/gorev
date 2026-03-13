@@ -5,15 +5,35 @@
 ## Architecture
 - **Language**: Go
 - **Database**: Redis
-- **Endpoints**:
-  - `GET /CRL/<filename>`: Serves static CRLs.
+- **Default Endpoints**:
+  - `GET /crls/<filename>`: Serves static CRLs.
+  - `GET /cas/<filename>`: Serves CA certificates.
   - `GET /ocsp/<base64req>`: Responds to HTTP GET OCSP requests.
   - `POST /ocsp`: Responds to HTTP POST OCSP requests.
+
+All endpoints are fully configurable via environment variables (see below).
 
 The application uses an asynchronous file watcher (`fsnotify`) to scan the `DATA_DIR` directory for updates in three explicit subdirectories (`cas/`, `crls/`, `responders/`) in real-time, and updates the in-memory CAs/responders and Redis immediately. 
 It supports multiple CAs and multiple Responder certificates intuitively pairing `.pem` responder certificates to their private keys via public key matching. PFX files are not supported to prevent static password hardcoding.
 
 Pre-signed OCSP responses are automatically **cached in Redis** upon generation. Successive identical requests map directly to the cache, bypassing expensive cryptographic operations entirely. The cache is safely flushed upon any detection of PKI topology changes via the file watcher.
+
+## Endpoint Configuration
+Each service type can be served on **multiple URL paths** using comma-separated environment variables:
+
+| Variable | Default | Serves |
+|---|---|---|
+| `ENDPOINTS_OCSP` | `/ocsp` | OCSP handler (POST + GET) |
+| `ENDPOINTS_CRL` | `/crls` | Files from `DATA_DIR/crls/` |
+| `ENDPOINTS_CA` | `/cas` | Files from `DATA_DIR/cas/` |
+| `ENDPOINTS_CHAIN` | *(disabled)* | Files from `DATA_DIR/cas/` on separate paths |
+
+**Example:** To serve CRLs on both `/` and `/CRL`, and OCSP on `/ocsp` and `/responder`:
+```yaml
+environment:
+  - ENDPOINTS_CRL=/,/CRL
+  - ENDPOINTS_OCSP=/ocsp,/responder
+```
 
 ## Getting Started
 
