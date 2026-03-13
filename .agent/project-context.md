@@ -78,6 +78,15 @@ This generates a 1M-entry CRL in-memory, tests the full parse → Redis → OCSP
 
 - **MANDATORY AGENT RULE:** After *every* iteration of feature development or code modification, you MUST explicitly update the `.gitignore`, `.agent/project-context.md`, and `README.md` to perfectly reflect the current state of the application. Do not leave documentation out of sync.
 
+## Delivery Status
+- **Current Version**: `v1.0.0-beta`
+- **Build Status**: All unit and E2E tests passing.
+- **Documentation**: Core internal documentation complete. External governance artifacts (SECURITY, CONTRIBUTING, LICENSE) being initialized.
+
+## Roadmap
+- [x] **v1.0.0 (MVP)**: Multi-CA support, Redis caching, async file watching, E2E test suite.
+- [ ] **v1.1.0**: Performance optimizations and detailed caching metrics.
+
 ## Agent Roles
 Specialized AI agent roles (Developer, Tester, DevOps, Security) are defined in [.agent/roles.md](file:///home/jordan/src/gorev/.agent/roles.md). Agents should assume these roles as appropriate to apply specific domain expertise.
 

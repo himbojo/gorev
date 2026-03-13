@@ -2,6 +2,9 @@
 
 `gorev` is a custom Go-based webserver designed to act as both a **Certificate Revocation List (CRL) endpoint** and an **Online Certificate Status Protocol (OCSP) responder**. It uses **Redis** as a fast, in-memory backend database to store and query the revocation status of certificates.
 
+[![Build Status](https://img.shields.io/badge/status-ready-success.svg)](https://github.com/himbojo/gorev)
+[![Go Version](https://img.shields.io/badge/go-1.22+-blue.svg)](go.mod)
+
 ## Architecture
 - **Language**: Go
 - **Database**: Redis

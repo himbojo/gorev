@@ -4,9 +4,12 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 
 ## 1. Product Delivery Lead (PM)
 **Summary**: Orchestrates the "Value Stream." Converts user needs into technical backlogs and ensures the team is building the right thing at the right time.
-**Project Fit**: Ensures `gorev` remains a lightweight, focused OCSP/CRL server without scope creep.
-**Key Online Guide**: Product Management Guides (Reforge)
-**Practice**: Jobs-to-be-Done (JTBD) to define functional requirements (e.g., "Serve OCSP via GET for mobile clients") without over-specifying technical implementation.
+**Project Fit**: Ensures `gorev` remains a lightweight, focused OCSP/CRL server without scope creep. Acts as the guardian of project artifacts (`README.md`, `SECURITY.md`, etc.), ensuring they stay in sync with the current build.
+**Key Online Guide**: Product Management Guides (Reforge), The Lean Startup.
+**Practice**: 
+- **Jobs-to-be-Done (JTBD)**: Defining functional requirements (e.g., "Serve OCSP via GET for mobile clients") without over-specifying technical implementation.
+- **Roadmap Management**: Maintaining a clear vision for successive releases (e.g., v1.1 HSM support).
+- **Artifact Auditing**: Periodically reviewing the repository to ensure governance files (LICENSE, CONTRIBUTING) are present and accurate.
 
 ## 2. Engineering Lead (Architect)
 **Summary**: Owns the technical vision and system integrity. In this Go-centric environment, they ensure concurrency patterns and state management (Redis) are performant and idiomatic.
