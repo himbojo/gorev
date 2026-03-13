@@ -72,6 +72,18 @@ openssl ocsp -CAfile data/cas/ca.pem -issuer data/cas/ca.pem -cert data/clients/
 
 ## Automated Testing
 
+### Unit Tests
+Comprehensive unit tests have been added for all internal components (`parser`, `database`, `server`, `watcher`).
+- `internal/parser`: Validates PEM/DER decoding for certificates, CRLs, and private keys.
+- `internal/database`: Verifies Redis interactions (revocation sets and OCSP response cache). Requires Redis.
+- `internal/watcher`: Tests file system monitoring and the 2-second debounce logic.
+- `internal/server`: Validates OCSP request processing (POST/GET), responder matching, and response generation.
+
+Run unit tests:
+```bash
+go test -v ./internal/...
+```
+
 ### E2E Tests
 An automated end-to-end testing suite is included in the `scripts/` directory:
 - `generate_pki.sh`: Completely scaffolds out multi-tier Certificate Authorities, issue valid/revoked end entities, and generates CRL and OCSP responder credentials in a new `test-data/` folder.

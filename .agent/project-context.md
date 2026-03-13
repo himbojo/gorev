@@ -47,6 +47,17 @@ Additionally, test certificates meant for external verification should not be pl
 `test-data/` is generated natively during the e2e testing lifecycle and mounts to the container dynamically under `docker-compose.test.yml`. Test data topologies currently include 2-tier and 3-tier certificate chains scaffolding multiple responder endpoints.
 
 ## Automated Testing
+Comprehensive unit tests cover all internal components:
+- `internal/parser`: decoding CAs, CRLs, and keys.
+- `internal/database`: Redis sets and cache management.
+- `internal/watcher`: fsnotify events and debounce.
+- `internal/server`: OCSP handling and issuer matching.
+
+Run all tests:
+```bash
+go test -v ./...
+```
+
 An automated end-to-end testing suite is included in the `scripts/` directory:
 - `generate_pki.sh`: Scaffolds multi-tier Certificate Authorities, issues valid/revoked end entities, and generates CRL and OCSP responder credentials in the `test-data/` folder.
 - `test_e2e.sh`: Wraps the PKI generation, spins up the docker environment natively evaluating the `test-data/` artifacts via a test compose, and executes client assertions using openssl to test positive/negative status code paths.

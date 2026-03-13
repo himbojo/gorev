@@ -14,5 +14,7 @@ docker-compose.override.yml
 # Testing
 test-data/
 *.log
+coverage.out
+*.out
 
 .git/
