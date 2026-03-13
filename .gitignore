@@ -10,3 +10,7 @@ docker-compose.override.yml
 # IDE / OS files
 .DS_Store
 .vscode/
+
+# Testing
+test-data/
+*.log
