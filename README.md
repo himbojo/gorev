@@ -13,6 +13,8 @@
 The application uses an asynchronous file watcher (`fsnotify`) to scan the `DATA_DIR` directory for updates in three explicit subdirectories (`cas/`, `crls/`, `responders/`) in real-time, and updates the in-memory CAs/responders and Redis immediately. 
 It supports multiple CAs and multiple Responder certificates intuitively pairing `.pem` responder certificates to their private keys via public key matching. PFX files are not supported to prevent static password hardcoding.
 
+Pre-signed OCSP responses are automatically **cached in Redis** upon generation. Successive identical requests map directly to the cache, bypassing expensive cryptographic operations entirely. The cache is safely flushed upon any detection of PKI topology changes via the file watcher.
+
 ## Getting Started
 
 ### Local Build and Testing

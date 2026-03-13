@@ -14,10 +14,10 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
   - `software.sslmate.com/src/go-pkcs12` for `.pfx` responder certificate parsing.
 - **Components**:
   - `main.go`: Application entrypoint. Initializes the Redis client, server, and background file watcher. Parses files from `DATA_DIR` at startup and handles HTTP routing for `/ocsp` and `/CRL`.
-  - `internal/database`: Connects to Redis. Manages sets of revoked certificate serial numbers per CA (`ca:{caName}:revoked`).
+  - `internal/database`: Connects to Redis. Manages sets of revoked certificate serials per CA (`ca:{caName}:revoked`), and actively serves an occlusion cache for signed OCSP responses natively.
   - `internal/parser`: Decodes and parses PEM CA certificates, CRLs (PEM or DER), PEM responder certificates and keys, and PFX responder certificates.
-  - `internal/server`: Thread-safe HTTP handlers for OCSP. Identifies the issuer from the OCSP request, queries Redis for revocation status, and dynamically generates an OCSP response signed by the responder key.
-  - `internal/watcher`: Background routine using `fsnotify` that watches `DATA_DIR` for file additions/deletions/modifications and triggers a full reload of certificates and CRLs.
+  - `internal/server`: Thread-safe HTTP handlers for OCSP. Identifies the issuer from the OCSP request, evaluates it against the database occlusion cache to rapidly return pre-signed hits, or generates dynamic responses signed by the responder key natively, while inserting them into the cache.
+  - `internal/watcher`: Background routine using `fsnotify` that watches `DATA_DIR` for file additions/deletions/modifications and triggers a full reload of certificates and CRLs while instantly wiping the OCSP occlusion cache safely.
 
 ## Deployment Details
 - **Docker Compose (`docker-compose.yml`)**:

@@ -143,6 +143,13 @@ func main() {
 			}
 		}
 		} // Close if crlFiles
+
+		// Ensure cache is wiped so no old revocations are served
+		if err := db.InvalidateCache(context.Background()); err != nil {
+			log.Printf("Warning: failed to invalidate OCSP cache: %v", err)
+		} else {
+			log.Println("Successfully invalidated OCSP cache")
+		}
 	} // Close reload func
 
 	reload()

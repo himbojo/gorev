@@ -136,6 +136,14 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check cache first
+	cachedResp, err := s.db.GetCachedResponse(r.Context(), issuerName, ocspReq.SerialNumber)
+	if err == nil && len(cachedResp) > 0 {
+		w.Header().Set("Content-Type", "application/ocsp-response")
+		w.Write(cachedResp)
+		return
+	}
+
 	isRevoked, err := s.db.IsRevoked(r.Context(), issuerName, ocspReq.SerialNumber)
 	if err != nil {
 		log.Printf("DB error: %v", err)
@@ -165,6 +173,16 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to create OCSP response: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
+	}
+
+	// Cache the response
+	ttl := time.Until(template.NextUpdate)
+	if ttl <= 0 {
+		ttl = 5 * time.Minute // Fallback TTL if NextUpdate is in the past or missing
+	}
+	err = s.db.CacheResponse(r.Context(), issuerName, ocspReq.SerialNumber, respBytes, ttl)
+	if err != nil {
+		log.Printf("Warning: failed to cache OCSP response: %v", err)
 	}
 
 	w.Header().Set("Content-Type", "application/ocsp-response")
