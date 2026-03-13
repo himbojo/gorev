@@ -21,10 +21,10 @@ services:
       - REDIS_ADDR=redis:6379
       - DATA_DIR=/data
       # Multi-endpoint examples (comma-separated):
-      - ENDPOINTS_OCSP=/ocsp,/responder
-      - ENDPOINTS_CRL=/,/crls,/CRL
-      - ENDPOINTS_CA=/,/cas,/CA
-      - ENDPOINTS_CHAIN=/,/chain,/chains
+      # - ENDPOINTS_OCSP=/ocsp,/responder
+      # - ENDPOINTS_CRL=/,/crls,/CRL
+      # - ENDPOINTS_CA=/,/cas,/CA
+      # - ENDPOINTS_CHAIN=/,/chain,/chains
     depends_on:
       - redis
     restart: unless-stopped
