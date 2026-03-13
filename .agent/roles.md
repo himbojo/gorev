@@ -31,8 +31,8 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 **Project Fit**: Maintains the `scripts/test_e2e.sh` suite and ensures the `stress_test.go` correctly simulates 1M-entry CRL loads.
 **Key Online Guide**: Google Testing Blog (Testing on the Toilet) and Learn Go with Tests (Quii).
 **Practice**:
-- **Native Fuzzing**: Implementing `go test -fuzz` to discover edge cases in the DER/PEM parser and OCSP request decoding logic.
-- **Static Analysis**: Enforcing strict quality gates using `golangci-lint` with custom linters to catch insecure PKI patterns.
+- **Native Fuzzing**: Implementing `go test -fuzz` to discover edge cases in the DER/PEM parser and OCSP request decoding logic. See [test-strategy.md](test-strategy.md).
+- **Static Analysis**: Enforcing strict quality gates using `golangci-lint` with the configuration in [.golangci.yml](../.golangci.yml).
 - **Subtests and Helpers**: Using `t.Run` and `t.Helper()` (as seen in `parser_test.go`) to create readable, maintainable test suites for complex crypto logic.
 
 ## 4. Platform Lead (DevOps)
@@ -63,4 +63,3 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 **Practice**:
 - **Revocation Strategies**: Designing robust revocation checking using OCSP responders and CRL distribution points (CRLDPS).
 - **Automated PKI Lifecycle**: Maintaining `generate_pki.sh` to scaffold realistic test environments (multi-tier CAs, revoked/valid entities).
-- **Hardware Security (HSM)**: Overseeing potential future integration of PKCS#11 for secure signing operations.

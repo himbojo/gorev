@@ -68,12 +68,17 @@ docker compose up -d redis
 go test -v -tags integration -run TestLargeCRL -timeout 10m ./...
 docker compose down
 ```
+### Resilience & Quality
+- **Test Strategy**: Defined in [.agent/test-strategy.md](test-strategy.md), outlining the testing pyramid and quality gates.
+- **Static Analysis**: Managed via [.golangci.yml](../.golangci.yml) with `golangci-lint`.
+- **Fuzzing**: Native Go fuzzing implemented in `internal/parser/parser_fuzz_test.go` to ensure parser resilience against malformed DER/PEM data.
+
 This generates a 1M-entry CRL in-memory, tests the full parse → Redis → OCSP pipeline, and reports latency metrics. It is guarded by the `integration` build tag.
 
 ## Status
 - Core logic for Redis integration, file watching, and OCSP response generation is production-ready.
 - Strict security controls (path validation, CRL signature verification) are enforced.
-- Performance scaling verified with 1M-entry CRL stress testing.
+- Performance scaling verified with 1M-entry CRL stress testi ng.
 - AI Agent roles updated to prioritize cryptographic integrity and system concurrency.
 
 ## Delivery Status
