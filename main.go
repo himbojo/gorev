@@ -170,45 +170,62 @@ func main() {
 	defer w.Close()
 
 	// Register OCSP endpoints
+	ocspRegistered := make(map[string]bool)
 	for _, ep := range ocspEndpoints {
-		http.HandleFunc(ep, srv.HandleOCSP)
+		if !ocspRegistered[ep] {
+			http.HandleFunc(ep, srv.HandleOCSP)
+			ocspRegistered[ep] = true
+		}
 		route := ep
 		if !strings.HasSuffix(route, "/") {
 			route += "/"
 		}
-		http.HandleFunc(route, srv.HandleOCSP)
+		if !ocspRegistered[route] {
+			http.HandleFunc(route, srv.HandleOCSP)
+			ocspRegistered[route] = true
+		}
 	}
 
-	// Register CRL endpoints
+	// Collect file-serving directories per route to handle overlapping paths.
+	// Multiple service types (CRL, CA, Chain) can share the same URL path.
+	routeDirs := make(map[string][]string)
+
 	crlDir := filepath.Join(dataDir, "crls")
+	caDir := filepath.Join(dataDir, "cas")
+
 	for _, ep := range crlEndpoints {
 		route := ep
 		if !strings.HasSuffix(route, "/") {
 			route += "/"
 		}
-		fs := http.FileServer(http.Dir(crlDir))
-		http.Handle(route, http.StripPrefix(route, fs))
+		routeDirs[route] = append(routeDirs[route], crlDir)
 	}
-
-	// Register CA endpoints
-	caDir := filepath.Join(dataDir, "cas")
 	for _, ep := range caEndpoints {
 		route := ep
 		if !strings.HasSuffix(route, "/") {
 			route += "/"
 		}
-		fs := http.FileServer(http.Dir(caDir))
-		http.Handle(route, http.StripPrefix(route, fs))
+		routeDirs[route] = append(routeDirs[route], caDir)
 	}
-
-	// Register Chain endpoints (same source as CAs)
 	for _, ep := range chainEndpoints {
 		route := ep
 		if !strings.HasSuffix(route, "/") {
 			route += "/"
 		}
-		fs := http.FileServer(http.Dir(caDir))
-		http.Handle(route, http.StripPrefix(route, fs))
+		routeDirs[route] = append(routeDirs[route], caDir)
+	}
+
+	// Deduplicate directories per route and register handlers
+	for route, dirs := range routeDirs {
+		seen := make(map[string]bool)
+		var unique []string
+		for _, d := range dirs {
+			if !seen[d] {
+				seen[d] = true
+				unique = append(unique, d)
+			}
+		}
+		http.Handle(route, &multiDirHandler{prefix: route, dirs: unique})
 	}
 
 	port := "8080"
@@ -216,6 +233,30 @@ func main() {
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+// multiDirHandler serves files from multiple directories on a single route.
+// It tries each directory in order and serves the first match found.
+type multiDirHandler struct {
+	prefix string
+	dirs   []string
+}
+
+func (h *multiDirHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	name := strings.TrimPrefix(r.URL.Path, h.prefix)
+	if name == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	for _, dir := range h.dirs {
+		fullPath := filepath.Join(dir, filepath.Clean("/"+name))
+		if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
+			http.ServeFile(w, r, fullPath)
+			return
+		}
+	}
+	http.NotFound(w, r)
 }
 
 // parseEndpoints reads a comma-separated list of URL paths from the given

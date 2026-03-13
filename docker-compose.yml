@@ -16,15 +16,15 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./data:/data:ro  # Mount the local data directory (certs, crls, responders) as read-only
+      - ./data:/data:ro # Mount the local data directory (certs, crls, responders) as read-only
     environment:
       - REDIS_ADDR=redis:6379
       - DATA_DIR=/data
       # Multi-endpoint examples (comma-separated):
-      # - ENDPOINTS_OCSP=/ocsp,/responder
-      # - ENDPOINTS_CRL=/crls,/CRL
-      # - ENDPOINTS_CA=/cas,/CA
-      # - ENDPOINTS_CHAIN=/chain
+      - ENDPOINTS_OCSP=/ocsp,/responder
+      - ENDPOINTS_CRL=/,/crls,/CRL
+      - ENDPOINTS_CA=/,/cas,/CA
+      - ENDPOINTS_CHAIN=/,/chain,/chains
     depends_on:
       - redis
     restart: unless-stopped
