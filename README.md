@@ -46,7 +46,7 @@ Multiple service types can share the same path (e.g., `/`). When paths overlap, 
 ## Getting Started
 
 ### Local Build and Testing
-Requires Go 1.22+.
+Requires Go 1.26.1+.
 
 1. Run `go mod tidy` to download dependencies.
 2. Run `go build -o gorev ./...` to build the binary.
