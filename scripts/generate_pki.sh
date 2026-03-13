@@ -133,4 +133,8 @@ openssl ca -gencrl -out crls/ca2.crl -config ca2.cnf
 rm ca*.csr openssl.cnf ca*.cnf cas/*.srl
 rm -rf ca1_db ca2_db
 
+# Ensure all files are readable by the non-root container user (UID 1001)
+find . -type f -exec chmod 644 {} +
+find . -type d -exec chmod 755 {} +
+
 echo "PKI Generation Complete. Files located in $TEST_DATA_DIR"

@@ -12,19 +12,20 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
   - `github.com/fsnotify/fsnotify` for directory watching.
   - `golang.org/x/crypto/ocsp` for OCSP request parsing and response generation.
 - **Components**:
-  - `main.go`: Application entrypoint. Initializes the Redis client, server, and background file watcher. Parses files from `DATA_DIR` at startup and registers configurable multi-endpoint HTTP routes for OCSP, CRL, CA, and Chain services. Uses a `multiDirHandler` to merge overlapping file-serving paths so multiple service types can share the same URL prefix. All startup logging uses `log.Printf` for consistent timestamped output.
-  - `internal/database`: Connects to Redis. Manages sets of revoked certificate serials per CA (`ca:{caName}:revoked`), and actively serves an occlusion cache for signed OCSP responses natively. Uses `redis.Set` with TTL (not the deprecated `SetEx`).
+  - `main.go`: Application entrypoint. Initializes the Redis client (with optional password auth), server, and background file watcher. Parses files from `DATA_DIR` at startup and registers configurable multi-endpoint HTTP routes for OCSP, CRL, CA, and Chain services. Uses a `multiDirHandler` with symlink-resolved path validation to prevent traversal attacks. CRLs are signature-verified against their issuing CA before loading. Graceful shutdown on SIGTERM/SIGINT via `http.Server.Shutdown`.
+  - `internal/database`: Connects to Redis with optional password authentication. Manages sets of revoked certificate serials per CA (`ca:{caName}:revoked`), and actively serves an OCSP response cache. Uses `redis.Set` with TTL (not the deprecated `SetEx`). Cache invalidation uses an atomic Lua script.
   - `internal/parser`: Decodes and parses PEM CA certificates, CRLs (PEM or DER), and PEM responder certificates and keys.
-  - `internal/server`: Thread-safe HTTP handlers for OCSP. Identifies the issuer from the OCSP request, evaluates it against the database occlusion cache to rapidly return pre-signed hits, or generates dynamic responses signed by the responder key natively, while inserting them into the cache. POST body is limited to 64KB via `io.LimitReader` for safety.
-  - `internal/watcher`: Background routine using `fsnotify` that watches `DATA_DIR` for file additions/deletions/modifications and triggers a full reload of certificates and CRLs while instantly wiping the OCSP occlusion cache safely.
+  - `internal/server`: Thread-safe HTTP handlers for OCSP. Strictly matches the issuer from the OCSP request — returns OCSP Unauthorized (RFC 6960) when no matching CA is found (no silent fallbacks). POST body is limited to 64KB via `io.LimitReader`.
+  - `internal/watcher`: Background routine using `fsnotify` that watches `DATA_DIR` for file changes with a 2-second debounce to coalesce rapid events into a single reload.
   - `stress_test.go`: Integration test (build tag `integration`) that generates a 1M-entry CRL in-memory, tests the full pipeline, and reports latency metrics. Requires Redis.
 
 ## Deployment Details
 - **Docker Compose (`docker-compose.yml`)**:
-  - `redis`: Uses the `redis:7-alpine` image, persists data to a volume `redis_data`.
-  - `responder`: Builds from the local `Dockerfile`. Mounts the `DATA_DIR` containing `.pem`, `.crl`, and `.pfx` files as read-only.
+  - `redis`: Uses the `redis:7-alpine` image, persists data to a volume `redis_data`. Port bound to `127.0.0.1` only. Supports optional password authentication via `REDIS_PASSWORD` env var.
+  - `responder`: Builds from the local `Dockerfile`, runs as non-root user `gorev` (UID 1001). Mounts the `DATA_DIR` containing `.pem` and `.crl` files as read-only. Runtime base image pinned to `alpine:3.21`.
 - **Environment Variables**:
   - `REDIS_ADDR`: DNS/IP and port for the Redis instance (default: `localhost:6379`).
+  - `REDIS_PASSWORD`: Optional Redis authentication password (default: empty / no auth).
   - `DATA_DIR`: Directory where certificates and CRLs reside (default: `.`).
   - `ENDPOINTS_OCSP`: Comma-separated OCSP handler paths (default: `/ocsp`).
   - `ENDPOINTS_CRL`: Comma-separated CRL file server paths (default: `/crls`).
@@ -67,3 +68,16 @@ This generates a 1M-entry CRL in-memory, tests the full parse → Redis → OCSP
 ## Development Guidelines
 - All Go code must follow [Effective Go](https://go.dev/doc/effective_go) principles, including proper formatting, idiomatic naming, and simplified control structures.
 - **MANDATORY AGENT RULE:** After *every* iteration of feature development or code modification, you MUST explicitly update the `.gitignore`, `.agent/project-context.md`, and `README.md` to perfectly reflect the current state of the application. Do not leave documentation out of sync.
+- **MANDATORY TESTING RULE:** After *every* code change, you MUST run the full verification suite before considering the work complete:
+  1. `go build -o /dev/null ./...` — ensure the project compiles
+  2. `go vet ./...` — run the Go static analyser
+  3. `bash scripts/test_e2e.sh` — run the end-to-end test suite (requires Docker)
+  4. `go test -v -tags integration -run TestLargeCRL -timeout 10m ./...` — run the stress/integration test (requires Redis)
+- **MANDATORY SECURITY RULE:** When coding or performing security reviews, the following resources MUST be referenced at minimum:
+  - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+  - [CWE Top 25 Most Dangerous Software Weaknesses](https://cwe.mitre.org/top25/)
+  - [OWASP API Security Top 10](https://owasp.org/www-project-api-security/)
+  - [NIST Secure Software Development Framework (SSDF)](https://csrc.nist.gov/projects/ssdf)
+  - [OWASP Application Security Verification Standard (ASVS)](https://owasp.org/www-project-application-security-verification-standard/)
+  - [OWASP Secure Coding Practices Checklist](https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/)
+  - [MITRE CWE/SANS Top 25](https://www.sans.org/top25-software-errors/)

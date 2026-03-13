@@ -9,8 +9,8 @@ echo "======= 1. Generating PKI ======="
 
 echo "======= 2. Starting Docker Services ======="
 cd "$ROOT_DIR"
-docker-compose -f docker-compose.test.yml down -v || true
-docker-compose -f docker-compose.test.yml up -d --build
+docker compose -f docker-compose.test.yml down -v || true
+docker compose -f docker-compose.test.yml up -d --build
 
 echo "Waiting for services to spin up..."
 sleep 5
@@ -77,4 +77,4 @@ else
 fi
 
 echo "======= ALL TESTS PASSED ======="
-docker-compose -f docker-compose.test.yml down -v
+docker compose -f docker-compose.test.yml down -v

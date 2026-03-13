@@ -13,10 +13,11 @@ type DB struct {
 	client *redis.Client
 }
 
-func New(addr string) *DB {
+func New(addr, password string) *DB {
 	return &DB{
 		client: redis.NewClient(&redis.Options{
-			Addr: addr,
+			Addr:     addr,
+			Password: password,
 		}),
 	}
 }
@@ -58,15 +59,21 @@ func (db *DB) CacheResponse(ctx context.Context, caName string, serial *big.Int,
 	return db.client.Set(ctx, key, response, ttl).Err()
 }
 
-// InvalidateCache wipes all dynamically cached OCSP responses.
+// InvalidateCache wipes all dynamically cached OCSP responses atomically.
 // Called when PKI data (CRLs or certificates) is reloaded.
 func (db *DB) InvalidateCache(ctx context.Context) error {
-	iter := db.client.Scan(ctx, 0, "ocsp:cache:*", 0).Iterator()
-	for iter.Next(ctx) {
-		err := db.client.Del(ctx, iter.Val()).Err()
-		if err != nil {
-			return err
-		}
-	}
-	return iter.Err()
+	// Lua script that atomically scans and deletes matching keys in batches.
+	script := redis.NewScript(`
+		local cursor = "0"
+		repeat
+			local result = redis.call("SCAN", cursor, "MATCH", ARGV[1], "COUNT", 100)
+			cursor = result[1]
+			local keys = result[2]
+			if #keys > 0 then
+				redis.call("DEL", unpack(keys))
+			end
+		until cursor == "0"
+		return 0
+	`)
+	return script.Run(ctx, db.client, nil, "ocsp:cache:*").Err()
 }

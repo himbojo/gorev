@@ -91,7 +91,7 @@ func TestLargeCRL(t *testing.T) {
 	}
 
 	// ── Stage 3: Load into Redis ─────────────────────────────────────
-	db := database.New(redisAddr)
+	db := database.New(redisAddr, os.Getenv("REDIS_PASSWORD"))
 	caName := caCert.Subject.CommonName
 
 	revokedSerials := make([]*big.Int, 0, totalRevoked)

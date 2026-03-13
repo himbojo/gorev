@@ -1,8 +1,16 @@
 services:
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    command: >
+      sh -c '
+        if [ -n "$$REDIS_PASSWORD" ]; then
+          redis-server --requirepass "$$REDIS_PASSWORD"
+        else
+          redis-server
+        fi
+      '
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
       - redis_test_data:/data
     restart: unless-stopped
@@ -17,6 +25,7 @@ services:
       - ./test-data:/data:ro
     environment:
       - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - DATA_DIR=/data
     depends_on:
       - redis

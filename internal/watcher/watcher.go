@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -40,6 +41,12 @@ func New(dir string, onChange func()) (*Watcher, error) {
 }
 
 func (w *Watcher) watch() {
+	// Debounce timer coalesces rapid filesystem events into a single reload.
+	// The timer fires only after the configured quiet period with no new events. (M3 fix)
+	const debounceInterval = 2 * time.Second
+	debounce := time.NewTimer(0)
+	debounce.Stop() // Start stopped; only arm on actual events
+
 	for {
 		select {
 		case event, ok := <-w.fw.Events:
@@ -48,9 +55,12 @@ func (w *Watcher) watch() {
 			}
 			// Only trigger on write/create/remove/rename
 			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) || event.Has(fsnotify.Remove) || event.Has(fsnotify.Rename) {
-				log.Printf("Detected file change: %s. Triggering reload...", event.Name)
-				w.onChange()
+				log.Printf("Detected file change: %s. Scheduling reload...", event.Name)
+				debounce.Reset(debounceInterval)
 			}
+		case <-debounce.C:
+			log.Println("Debounce period elapsed, triggering reload...")
+			w.onChange()
 		case err, ok := <-w.fw.Errors:
 			if !ok {
 				return

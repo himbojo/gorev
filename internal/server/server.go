@@ -106,15 +106,11 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if issuer == nil {
-		if len(caCerts) > 0 {
-			log.Printf("Warning: OCSP Request issuer hash didn't match any CA, falling back to first CA")
-			issuer = caCerts[0]
-			issuerName = issuer.Subject.CommonName
-		} else {
-			log.Printf("Unknown issuer for OCSP request")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
+		log.Printf("OCSP request from unknown issuer — no matching CA found")
+		// Return OCSP Unauthorized per RFC 6960 §2.3
+		w.Header().Set("Content-Type", "application/ocsp-response")
+		w.Write(ocsp.UnauthorizedErrorResponse)
+		return
 	}
 
 	var responderCert *x509.Certificate
@@ -136,14 +132,9 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responderCert == nil {
-		if len(respCerts) > 0 {
-			log.Printf("Warning: Could not strictly match a responder cert for issuer %s, falling back to first available", issuerName)
-			responderCert = respCerts[0]
-			responderKey = respKeys[0]
-		} else {
-			http.Error(w, "No matching responder cert found", http.StatusInternalServerError)
-			return
-		}
+		log.Printf("No matching responder cert found for issuer %s", issuerName)
+		http.Error(w, "No matching responder cert found", http.StatusInternalServerError)
+		return
 	}
 
 	// Check cache first

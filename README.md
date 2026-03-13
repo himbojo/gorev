@@ -13,10 +13,10 @@
 
 All endpoints are fully configurable via environment variables (see below).
 
-The application uses an asynchronous file watcher (`fsnotify`) to scan the `DATA_DIR` directory for updates in three explicit subdirectories (`cas/`, `crls/`, `responders/`) in real-time, and updates the in-memory CAs/responders and Redis immediately. 
-It supports multiple CAs and multiple Responder certificates intuitively pairing `.pem` responder certificates to their private keys via public key matching. PFX files are not supported to prevent static password hardcoding.
+The application uses an asynchronous file watcher (`fsnotify`) with a 2-second debounce to scan the `DATA_DIR` directory for updates in three explicit subdirectories (`cas/`, `crls/`, `responders/`) in real-time, and updates the in-memory CAs/responders and Redis.
+It supports multiple CAs and multiple Responder certificates intuitively pairing `.pem` responder certificates to their private keys via public key matching. CRLs are **signature-verified** against their issuing CA before revocations are loaded. PFX files are not supported to prevent static password hardcoding.
 
-Pre-signed OCSP responses are automatically **cached in Redis** upon generation. Successive identical requests map directly to the cache, bypassing expensive cryptographic operations entirely. The cache is safely flushed upon any detection of PKI topology changes via the file watcher.
+Pre-signed OCSP responses are automatically **cached in Redis** upon generation. Successive identical requests map directly to the cache, bypassing expensive cryptographic operations entirely. The cache is atomically flushed before any PKI reload. The server supports **graceful shutdown** on SIGTERM/SIGINT.
 
 ## Endpoint Configuration
 Each service type can be served on **multiple URL paths** using comma-separated environment variables:
@@ -27,6 +27,7 @@ Each service type can be served on **multiple URL paths** using comma-separated 
 | `ENDPOINTS_CRL` | `/crls` | Files from `DATA_DIR/crls/` |
 | `ENDPOINTS_CA` | `/cas` | Files from `DATA_DIR/cas/` |
 | `ENDPOINTS_CHAIN` | *(disabled)* | Files from `DATA_DIR/cas/` on separate paths |
+| `REDIS_PASSWORD` | *(empty)* | Optional Redis authentication password |
 
 **Example:** To serve CRLs on both `/` and `/CRL`, and OCSP on `/ocsp` and `/responder`:
 ```yaml

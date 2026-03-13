@@ -9,8 +9,11 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/himbojo/gorev/internal/database"
 	"github.com/himbojo/gorev/internal/parser"
@@ -23,6 +26,7 @@ func main() {
 	if redisAddr == "" {
 		redisAddr = "localhost:6379"
 	}
+	redisPassword := os.Getenv("REDIS_PASSWORD")
 
 	dataDir := os.Getenv("DATA_DIR")
 	if dataDir == "" {
@@ -42,7 +46,7 @@ func main() {
 	log.Printf("CA Endpoints: %v", caEndpoints)
 	log.Printf("Chain Endpoints: %v", chainEndpoints)
 
-	db := database.New(redisAddr)
+	db := database.New(redisAddr, redisPassword)
 	srv := server.New(db, dataDir, ocspEndpoints)
 
 	reload := func() {
@@ -111,6 +115,14 @@ func main() {
 
 		srv.UpdateCerts(caCerts, respCerts, respKeys)
 
+		// Invalidate cache BEFORE loading new CRL data so stale cached responses
+		// cannot be served while revocation sets are being updated. (L1 fix)
+		if err := db.InvalidateCache(context.Background()); err != nil {
+			log.Printf("Warning: failed to invalidate OCSP cache: %v", err)
+		} else {
+			log.Println("Successfully invalidated OCSP cache")
+		}
+
 		// Now load CRLs and update DB
 		crlDir := filepath.Join(dataDir, "crls")
 		if crlFiles, err := os.ReadDir(crlDir); err == nil {
@@ -127,16 +139,26 @@ func main() {
 
 				crlIssuerCN := crl.Issuer.CommonName
 
-				var caName string
+				// Find the matching CA and verify the CRL signature (M2 fix)
+				var matchedCA *x509.Certificate
 				for _, ca := range caCerts {
 					if ca.Subject.CommonName == crlIssuerCN {
-						caName = ca.Subject.CommonName
+						matchedCA = ca
 						break
 					}
 				}
-				if caName == "" {
-					caName = crlIssuerCN
+
+				if matchedCA != nil {
+					if err := crl.CheckSignatureFrom(matchedCA); err != nil {
+						log.Printf("WARNING: CRL %s failed signature verification against CA %s: %v", file.Name(), matchedCA.Subject.CommonName, err)
+						continue
+					}
+				} else {
+					log.Printf("WARNING: CRL %s has no matching CA for issuer %s — skipping (cannot verify signature)", file.Name(), crlIssuerCN)
+					continue
 				}
+
+				caName := matchedCA.Subject.CommonName
 
 				var revokedSerials []*big.Int
 				for _, rev := range crl.RevokedCertificates {
@@ -147,17 +169,10 @@ func main() {
 				if err != nil {
 					log.Printf("Failed to update database for CRL %s: %v", file.Name(), err)
 				} else {
-					log.Printf("Loaded CRL %s with %d revoked certs for CA %s", file.Name(), len(revokedSerials), caName)
+					log.Printf("Loaded CRL %s with %d revoked certs for CA %s (signature verified)", file.Name(), len(revokedSerials), caName)
 				}
 			}
 		} // Close if crlFiles
-
-		// Ensure cache is wiped so no old revocations are served
-		if err := db.InvalidateCache(context.Background()); err != nil {
-			log.Printf("Warning: failed to invalidate OCSP cache: %v", err)
-		} else {
-			log.Println("Successfully invalidated OCSP cache")
-		}
 	} // Close reload func
 
 	reload()
@@ -228,10 +243,26 @@ func main() {
 	}
 
 	port := "8080"
+	httpServer := &http.Server{Addr: ":" + port}
+
+	// Graceful shutdown on SIGTERM/SIGINT (I1 fix)
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+		sig := <-sigCh
+		log.Printf("Received signal %v, shutting down gracefully...", sig)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(ctx); err != nil {
+			log.Printf("Graceful shutdown failed: %v", err)
+		}
+	}()
+
 	log.Printf("Listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed: %v", err)
 	}
+	log.Println("Server stopped")
 }
 
 // multiDirHandler serves files from multiple directories on a single route.
@@ -249,9 +280,23 @@ func (h *multiDirHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, dir := range h.dirs {
-		fullPath := filepath.Join(dir, filepath.Clean("/"+name))
-		if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
-			http.ServeFile(w, r, fullPath)
+		cleaned := filepath.Clean("/" + name)
+		fullPath := filepath.Join(dir, cleaned)
+
+		// Resolve symlinks and verify the real path is within the allowed directory. (H1 fix)
+		resolved, err := filepath.EvalSymlinks(fullPath)
+		if err != nil {
+			continue // file doesn't exist or can't be resolved
+		}
+		absDir, _ := filepath.Abs(dir)
+		if !strings.HasPrefix(resolved, absDir+string(os.PathSeparator)) && resolved != absDir {
+			log.Printf("Blocked path traversal attempt: %s resolved to %s (outside %s)", r.URL.Path, resolved, absDir)
+			http.NotFound(w, r)
+			return
+		}
+
+		if info, err := os.Stat(resolved); err == nil && !info.IsDir() {
+			http.ServeFile(w, r, resolved)
 			return
 		}
 	}
