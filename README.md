@@ -53,7 +53,7 @@ Certificates should be placed in the `data/` directory (`data/cas/`, `data/crls/
 If you are running the automated E2E tests, `docker-compose.test.yml` will mount the generated `test-data/` directory instead to isolate test artifacts.
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### Usage
@@ -70,9 +70,29 @@ openssl ocsp -CAfile data/cas/ca.pem -issuer data/cas/ca.pem -cert data/clients/
 ```
 
 ## Automated Testing
+
+### E2E Tests
 An automated end-to-end testing suite is included in the `scripts/` directory:
 - `generate_pki.sh`: Completely scaffolds out multi-tier Certificate Authorities, issue valid/revoked end entities, and generates CRL and OCSP responder credentials in a new `test-data/` folder.
 - `test_e2e.sh`: Wraps the PKI generation, spins up the docker environment natively evaluating the `test-data/` artifacts, and executes client assertions using openssl to test positive/negative status code paths.
+
+### Stress / Integration Test
+A Go integration test (`stress_test.go`) validates the full pipeline under load with a **1,000,000-entry CRL**. It generates all PKI in-memory (no openssl required), parses the CRL, bulk-loads into Redis, and queries OCSP — reporting latency metrics for each stage.
+
+Requires a running Redis instance on `localhost:6379` (or set `REDIS_ADDR`).
+
+```bash
+# Start Redis
+docker compose up -d redis
+
+# Run the stress test
+go test -v -tags integration -run TestLargeCRL -timeout 10m ./...
+
+# Stop Redis when done
+docker compose down
+```
+
+The test is guarded by the `integration` build tag so it does not run during normal `go test ./...`.
 
 ## Agentic Development
 For detailed project context and agent instructions, see `.agent/project-context.md`. Follow [Effective Go](https://go.dev/doc/effective_go) for all code modifications.

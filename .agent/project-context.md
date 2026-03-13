@@ -12,11 +12,12 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
   - `github.com/fsnotify/fsnotify` for directory watching.
   - `golang.org/x/crypto/ocsp` for OCSP request parsing and response generation.
 - **Components**:
-  - `main.go`: Application entrypoint. Initializes the Redis client, server, and background file watcher. Parses files from `DATA_DIR` at startup and registers configurable multi-endpoint HTTP routes for OCSP, CRL, CA, and Chain services. Uses a `multiDirHandler` to merge overlapping file-serving paths so multiple service types can share the same URL prefix.
-  - `internal/database`: Connects to Redis. Manages sets of revoked certificate serials per CA (`ca:{caName}:revoked`), and actively serves an occlusion cache for signed OCSP responses natively.
-  - `internal/parser`: Decodes and parses PEM CA certificates, CRLs (PEM or DER), PEM responder certificates and keys, and PFX responder certificates.
-  - `internal/server`: Thread-safe HTTP handlers for OCSP. Identifies the issuer from the OCSP request, evaluates it against the database occlusion cache to rapidly return pre-signed hits, or generates dynamic responses signed by the responder key natively, while inserting them into the cache.
+  - `main.go`: Application entrypoint. Initializes the Redis client, server, and background file watcher. Parses files from `DATA_DIR` at startup and registers configurable multi-endpoint HTTP routes for OCSP, CRL, CA, and Chain services. Uses a `multiDirHandler` to merge overlapping file-serving paths so multiple service types can share the same URL prefix. All startup logging uses `log.Printf` for consistent timestamped output.
+  - `internal/database`: Connects to Redis. Manages sets of revoked certificate serials per CA (`ca:{caName}:revoked`), and actively serves an occlusion cache for signed OCSP responses natively. Uses `redis.Set` with TTL (not the deprecated `SetEx`).
+  - `internal/parser`: Decodes and parses PEM CA certificates, CRLs (PEM or DER), and PEM responder certificates and keys.
+  - `internal/server`: Thread-safe HTTP handlers for OCSP. Identifies the issuer from the OCSP request, evaluates it against the database occlusion cache to rapidly return pre-signed hits, or generates dynamic responses signed by the responder key natively, while inserting them into the cache. POST body is limited to 64KB via `io.LimitReader` for safety.
   - `internal/watcher`: Background routine using `fsnotify` that watches `DATA_DIR` for file additions/deletions/modifications and triggers a full reload of certificates and CRLs while instantly wiping the OCSP occlusion cache safely.
+  - `stress_test.go`: Integration test (build tag `integration`) that generates a 1M-entry CRL in-memory, tests the full pipeline, and reports latency metrics. Requires Redis.
 
 ## Deployment Details
 - **Docker Compose (`docker-compose.yml`)**:
@@ -47,12 +48,21 @@ Additionally, test certificates meant for external verification should not be pl
 ## Automated Testing
 An automated end-to-end testing suite is included in the `scripts/` directory:
 - `generate_pki.sh`: Scaffolds multi-tier Certificate Authorities, issues valid/revoked end entities, and generates CRL and OCSP responder credentials in the `test-data/` folder.
-- `test_e2e.sh`: Wraps the PKI generation, spins up the docker environment nativesly evaluating the `test-data/` artifacts via a test compose, and executes client assertions using openssl to test positive/negative status code paths.
+- `test_e2e.sh`: Wraps the PKI generation, spins up the docker environment natively evaluating the `test-data/` artifacts via a test compose, and executes client assertions using openssl to test positive/negative status code paths.
+
+A stress/integration test is available via Go's testing framework:
+```bash
+docker compose up -d redis
+go test -v -tags integration -run TestLargeCRL -timeout 10m ./...
+docker compose down
+```
+This generates a 1M-entry CRL in-memory, tests the full parse → Redis → OCSP pipeline, and reports latency metrics. It is guarded by the `integration` build tag.
 
 ## Status
 - The codebase logic for Redis integration, file watching, HTTP routing, and OCSP response generation is fully implemented.
 - The project successfully compiles and is ready for integration testing and Docker Compose deployment.
 - A robust, repeatable Multi-CA E2E testing framework has been scripted and verified. No known bugs exist.
+- A `.dockerignore` file excludes the compiled binary, test data, and git history from Docker build context.
 
 ## Development Guidelines
 - All Go code must follow [Effective Go](https://go.dev/doc/effective_go) principles, including proper formatting, idiomatic naming, and simplified control structures.
