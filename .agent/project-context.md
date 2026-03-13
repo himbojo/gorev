@@ -12,7 +12,7 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
   - `github.com/fsnotify/fsnotify` for directory watching.
   - `golang.org/x/crypto/ocsp` for OCSP request parsing and response generation.
 - **Components**:
-  - `main.go`: Application entrypoint. Initializes the Redis client (with optional password auth), server, and background file watcher. Parses files from `DATA_DIR` at startup and registers configurable multi-endpoint HTTP routes for OCSP, CRL, CA, and Chain services. Uses a `multiDirHandler` with symlink-resolved path validation to prevent traversal attacks. CRLs are signature-verified against their issuing CA before loading. Graceful shutdown on SIGTERM/SIGINT via `http.Server.Shutdown`.
+  - `main.go`: Application entrypoint. Initializes the Redis client (with optional password auth), server, and background file watcher. Parses files from `DATA_DIR` at startup and registers configurable multi-endpoint HTTP routes for OCSP, CRL, CA, and Chain services. Uses a `multiDirHandler` with symlink-resolved path validation and mandatory `filepath.Abs` error handling to prevent traversal attacks. CRLs are signature-verified against their issuing CA before loading. Graceful shutdown on SIGTERM/SIGINT via `http.Server.Shutdown`.
   - `internal/database`: Connects to Redis with optional password authentication. Manages sets of revoked certificate serials per CA (`ca:{caName}:revoked`), and actively serves an OCSP response cache. Uses `redis.Set` with TTL (not the deprecated `SetEx`). Cache invalidation uses an atomic Lua script.
   - `internal/parser`: Decodes and parses PEM CA certificates, CRLs (PEM or DER), and PEM responder certificates and keys.
   - `internal/server`: Thread-safe HTTP handlers for OCSP. Strictly matches the issuer from the OCSP request — returns OCSP Unauthorized (RFC 6960) when no matching CA is found (no silent fallbacks). POST body is limited to 64KB via `io.LimitReader`.
@@ -22,7 +22,7 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
 ## Deployment Details
 - **Docker Compose (`docker-compose.yml`)**:
   - `redis`: Uses the `redis:7-alpine` image, persists data to a volume `redis_data`. Port bound to `127.0.0.1` only. Supports optional password authentication via `REDIS_PASSWORD` env var.
-  - `responder`: Builds from the local `Dockerfile`, runs as non-root user `gorev` (UID 1001). Mounts the `DATA_DIR` containing `.pem` and `.crl` files as read-only. Runtime base image pinned to `alpine:3.21`.
+  - `responder`: Builds from the local `Dockerfile`, runs as non-root user `gorev` (UID 1001). Mounts the `DATA_DIR` containing `.pem` and `.crl` files as read-only. Runtime base image pinned to `alpine:3.21`. Resource limits enforced: 2GB Memory, 2 CPU.
 - **Environment Variables**:
   - `REDIS_ADDR`: DNS/IP and port for the Redis instance (default: `localhost:6379`).
   - `REDIS_PASSWORD`: Optional Redis authentication password (default: empty / no auth).
@@ -80,9 +80,10 @@ This generates a 1M-entry CRL in-memory, tests the full parse → Redis → OCSP
 
 ## Status
 - Core logic for Redis integration, file watching, and OCSP response generation is production-ready.
-- Strict security controls (path validation, CRL signature verification) are enforced.
-- Performance scaling verified with 1M-entry CRL stress testi ng.
-- AI Agent roles updated to prioritize cryptographic integrity and system concurrency.
+- Strict security controls (path validation, CRL signature verification, resource limits) are enforced.
+- Dependencies (`x/crypto`, `x/net`) updated to latest hardened versions.
+- Performance scaling verified with 1M-entry CRL stress testing.
+- AI Agent roles updated to prioritize cryptographic integrity, system concurrency, and documentation maintenance.
 
 ## Delivery Status
 - **Current Version**: `v1.0.0-beta` 
@@ -103,6 +104,7 @@ Specialized AI agent roles (Developer, Tester, DevOps, Security) are defined in 
   2. `go vet ./...` — run the Go static analyser
   3. `bash scripts/test_e2e.sh` — run the end-to-end test suite (requires Docker)
   4. `go test -v -tags integration -run TestLargeCRL -timeout 10m ./...` — run the stress/integration test (requires Redis)
+- **MANDATORY DOCUMENTATION RULE:** After *any* code change or configuration update, you MUST update `README.md` and `.agent/project-context.md` (and other relevant artifacts) to reflect the new state of the system. Documentation must never lag behind the implementation.
 - **MANDATORY SECURITY RULE:** When coding or performing security reviews, the following resources MUST be referenced at minimum:
   - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
   - [CWE Top 25 Most Dangerous Software Weaknesses](https://cwe.mitre.org/top25/)

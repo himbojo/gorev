@@ -37,6 +37,8 @@ Each service type can be served on **multiple URL paths** using comma-separated 
 environment:
   - ENDPOINTS_CRL=/,/CRL
   - ENDPOINTS_OCSP=/ocsp,/responder
+  - ENDPOINTS_CA=/cas,/CA
+  - ENDPOINTS_CHAIN=/chain,/chains
 ```
 
 Multiple service types can share the same path (e.g., `/`). When paths overlap, the server searches each source directory in order and serves the first file match found.
@@ -114,8 +116,10 @@ The test is guarded by the `integration` build tag so it does not run during nor
 
 `gorev` is built with a security-first mindset:
 - **Threat Modeling**: See our initial [Threat Model](.agent/threat-model.md) for details on trust boundaries and mitigations.
-- **Supply Chain**: Periodic scanning with `govulncheck`.
-- **Minimal Surface**: Runs as non-root in a minimal Alpine-based container.
+- **Supply Chain**: Periodic scanning with `govulncheck`. Dependencies (`x/crypto`, `x/net`) are pinned to recent, hardened versions.
+- **Minimal Surface**: Runs as non-root in a minimal Alpine-based container. The build context is optimized via `.dockerignore` to exclude non-essential files.
+- **Resource Protection**: Docker deployment includes strict CPU and Memory limits (2GB RAM, 2 CPU) to prevent resource exhaustion attacks.
+- **Robustness**: Path resolution in `multiDirHandler` uses mandatory `filepath.EvalSymlinks` and hardened `filepath.Abs` error handling to prevent traversal attacks.
 
 ## Agentic Development
 For detailed project context and agent instructions, see [.agent/project-context.md](.agent/project-context.md). 

@@ -1,6 +1,6 @@
 # Agent Roles: gorev Development
 
-To ensure the long-term success of `gorev`, specialized AI agent roles are defined below. These roles provide specific lenses through which to approach development, maintenance, and security, tailored to the unique requirements of a high-performance PKI infrastructure component.
+To ensure the long-term success of `gorev`, specialized AI agent roles are defined below. These roles provide specific lenses through which to approach development, maintenance, and security, tailored to the unique requirements of a high-performance PKI infrastructure component. When assuming a role the `project-context.md` file should be considered the source of truth for the project and the `README.md` file should be considered the source of truth for the project's public interface. **All agents are responsible for ensuring these documents are updated immediately following any changes to the codebase or configuration.**
 
 ## 1. Product Delivery Lead (PM)
 **Summary**: Orchestrates the "Value Stream." Converts user needs into technical backlogs and ensures the team is building the right thing at the right time.
@@ -26,6 +26,7 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 - **Concurrency Master**: Review and manage mutex locks in `server` and `watcher` to prevent race conditions during hot-reloads.
 - **Performance Analyst**: Optimize the Redis Lua scripts for atomic cache invalidation.
 - **Strategic Vision**: Maintaining the release files.
+- **Documentation Guardian**: Ensure `README.md` and `.agent/project-context.md` are updated after every technical change or architectural adjustment.
 
 ## 3. SDET Lead (Lead Tester)
 **Summary**: Guards the "Definition of Done" through automation. Focuses on unit, integration, and end-to-end testing to ensure zero-regression deployments.

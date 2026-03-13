@@ -2,4 +2,6 @@ gorev
 test-data/
 data/
 .git/
+.agent/
+.golangci.yml
 *.log

@@ -288,7 +288,11 @@ func (h *multiDirHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue // file doesn't exist or can't be resolved
 		}
-		absDir, _ := filepath.Abs(dir)
+		absDir, err := filepath.Abs(dir)
+		if err != nil {
+			log.Printf("Warning: failed to get absolute path for %s: %v", dir, err)
+			continue
+		}
 		if !strings.HasPrefix(resolved, absDir+string(os.PathSeparator)) && resolved != absDir {
 			log.Printf("Blocked path traversal attempt: %s resolved to %s (outside %s)", r.URL.Path, resolved, absDir)
 			http.NotFound(w, r)
