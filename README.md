@@ -35,6 +35,8 @@ environment:
   - ENDPOINTS_OCSP=/ocsp,/responder
 ```
 
+Multiple service types can share the same path (e.g., `/`). When paths overlap, the server searches each source directory in order and serves the first file match found.
+
 ## Getting Started
 
 ### Local Build and Testing

@@ -11,9 +11,8 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
   - `github.com/redis/go-redis/v9` for Redis connectivity.
   - `github.com/fsnotify/fsnotify` for directory watching.
   - `golang.org/x/crypto/ocsp` for OCSP request parsing and response generation.
-  - `software.sslmate.com/src/go-pkcs12` for `.pfx` responder certificate parsing.
 - **Components**:
-  - `main.go`: Application entrypoint. Initializes the Redis client, server, and background file watcher. Parses files from `DATA_DIR` at startup and handles HTTP routing for `/ocsp` and `/CRL`.
+  - `main.go`: Application entrypoint. Initializes the Redis client, server, and background file watcher. Parses files from `DATA_DIR` at startup and registers configurable multi-endpoint HTTP routes for OCSP, CRL, CA, and Chain services. Uses a `multiDirHandler` to merge overlapping file-serving paths so multiple service types can share the same URL prefix.
   - `internal/database`: Connects to Redis. Manages sets of revoked certificate serials per CA (`ca:{caName}:revoked`), and actively serves an occlusion cache for signed OCSP responses natively.
   - `internal/parser`: Decodes and parses PEM CA certificates, CRLs (PEM or DER), PEM responder certificates and keys, and PFX responder certificates.
   - `internal/server`: Thread-safe HTTP handlers for OCSP. Identifies the issuer from the OCSP request, evaluates it against the database occlusion cache to rapidly return pre-signed hits, or generates dynamic responses signed by the responder key natively, while inserting them into the cache.
@@ -30,6 +29,7 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
   - `ENDPOINTS_CRL`: Comma-separated CRL file server paths (default: `/crls`).
   - `ENDPOINTS_CA`: Comma-separated CA certificate file server paths (default: `/cas`).
   - `ENDPOINTS_CHAIN`: Comma-separated CA chain file server paths (default: disabled).
+  - Multiple service types can share the same path (e.g., `/`). When overlapping, the server searches each source directory in order and serves the first file match found.
 
 ## Known Artifacts/Test Data
 The project expects files strictly separated in the data directory.
