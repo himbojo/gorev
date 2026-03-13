@@ -66,3 +66,4 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 **Practice**:
 - **Revocation Strategies**: Designing robust revocation checking using OCSP responders and CRL distribution points (CRLDPS).
 - **Automated PKI Lifecycle**: Maintaining `generate_pki.sh` to scaffold realistic test environments (multi-tier CAs, revoked/valid entities).
+- **Strategic Vision**: Maintaining the [pki-strategy.md](pki-strategy.md) and [pki-compliance-checklist.md](pki-compliance-checklist.md) to guide identity and trust.

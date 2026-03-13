@@ -71,6 +71,8 @@ docker compose down
 ### Resilience & Quality
 - **Test Strategy**: Defined in [.agent/test-strategy.md](test-strategy.md), outlining the testing pyramid and quality gates.
 - **Platform Strategy**: Defined in [.agent/platform-strategy.md](platform-strategy.md), outlining the deployment and infrastructure roadmap.
+- **PKI Strategy**: Defined in [pki-strategy.md](pki-strategy.md), outlining the trust model and cryptographic requirements.
+- **PKI Compliance**: Defined in [pki-compliance-checklist.md](pki-compliance-checklist.md), tracking adherence to RFC 5280/6960.
 - **Static Analysis**: Managed via [.golangci.yml](../.golangci.yml) with `golangci-lint`.
 - **Fuzzing**: Native Go fuzzing implemented in `internal/parser/parser_fuzz_test.go` to ensure parser resilience against malformed DER/PEM data.
 
