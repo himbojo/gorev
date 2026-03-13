@@ -111,4 +111,6 @@ docker compose down
 The test is guarded by the `integration` build tag so it does not run during normal `go test ./...`.
 
 ## Agentic Development
-For detailed project context and agent instructions, see `.agent/project-context.md`. Follow [Effective Go](https://go.dev/doc/effective_go) for all code modifications.
+For detailed project context and agent instructions, see [.agent/project-context.md](.agent/project-context.md). 
+Review the [Technical Retrospective (v1.0.0-beta)](.agent/retrospectives/v1.0.0-beta.md) for architectural insights. 
+Follow [Effective Go](https://go.dev/doc/effective_go) for all code modifications.

@@ -71,24 +71,22 @@ docker compose down
 This generates a 1M-entry CRL in-memory, tests the full parse → Redis → OCSP pipeline, and reports latency metrics. It is guarded by the `integration` build tag.
 
 ## Status
-- The codebase logic for Redis integration, file watching, HTTP routing, and OCSP response generation is fully implemented.
-- The project successfully compiles and is ready for integration testing and Docker Compose deployment.
-- A robust, repeatable Multi-CA E2E testing framework has been scripted and verified. No known bugs exist.
-- A `.dockerignore` file excludes the compiled binary, test data, and git history from Docker build context.
-
-- **MANDATORY AGENT RULE:** After *every* iteration of feature development or code modification, you MUST explicitly update the `.gitignore`, `.agent/project-context.md`, and `README.md` to perfectly reflect the current state of the application. Do not leave documentation out of sync.
+- Core logic for Redis integration, file watching, and OCSP response generation is production-ready.
+- Strict security controls (path validation, CRL signature verification) are enforced.
+- Performance scaling verified with 1M-entry CRL stress testing.
+- AI Agent roles updated to prioritize cryptographic integrity and system concurrency.
 
 ## Delivery Status
-- **Current Version**: `v1.0.0-beta`
-- **Build Status**: All unit and E2E tests passing.
-- **Documentation**: Core internal documentation complete. External governance artifacts (SECURITY, CONTRIBUTING, LICENSE) being initialized.
+- **Current Version**: `v1.0.0-beta` 
+- **Build Status**: Passing (Unit, E2E, Integration).
+- **Documentation**: Technical retrospective completed for v1.0.0-beta. Roadmap refined.
 
 ## Roadmap
 - [x] **v1.0.0 (MVP)**: Multi-CA support, Redis caching, async file watching, E2E test suite.
 - [ ] **v1.1.0**: Performance optimizations and detailed caching metrics.
 
 ## Agent Roles
-Specialized AI agent roles (Developer, Tester, DevOps, Security) are defined in [.agent/roles.md](file:///home/jordan/src/gorev/.agent/roles.md). Agents should assume these roles as appropriate to apply specific domain expertise.
+Specialized AI agent roles (Developer, Tester, DevOps, Security) are defined in [roles.md](roles.md). Agents should assume these roles as appropriate to apply specific domain expertise.
 
 ## Development Guidelines
 - All Go code must follow [Effective Go](https://go.dev/doc/effective_go) principles, including proper formatting, idiomatic naming, and simplified control structures.

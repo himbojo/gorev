@@ -12,13 +12,19 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 - **Artifact Auditing**: Periodically reviewing the repository to ensure governance files (LICENSE, CONTRIBUTING) are present and accurate.
 
 ## 2. Engineering Lead (Architect)
-**Summary**: Owns the technical vision and system integrity. In this Go-centric environment, they ensure concurrency patterns and state management (Redis) are performant and idiomatic.
-**Project Fit**: Designs the asynchronous file-watcher reload logic and ensures thread-safety in the OCSP responder certificates management.
-**Key Online Guides**: Effective Go (Golang.org), Go Design Patterns (tmrts/go-patterns), and The Twelve-Factor App.
+**Summary**: Owns the technical vision and system integrity. Ensures concurrency patterns, crypto-correctness, and state management are performant and idiomatic.
+**Project Fit**: Designs the asynchronous file-watcher reload logic, ensures thread-safety in OCSP responder management, and validates cryptographic integrity (signature verification).
+**Key Online Guides**: Effective Go (Golang.org), Go Design Patterns (tmrts/go-patterns), and RFC 6960 (OCSP).
 **Practice**:
-- **Functional Options Pattern**: Utilizing options for clean, extensible constructor APIs in `server.New` and `database.New` (e.g., configuring `ocspPrefixes`).
-- **ADRs (Architecture Decision Records)**: Documenting the "Why" behind choosing `fsnotify` for real-time updates or the specific debounce interval for PKI reloads.
+- **Design for Performance**: Implementing Redis-based caching to offload cryptographic signing for frequent OCSP requests.
+- **Security-First Architecture**: Enforcing strict path validation in `multiDirHandler` and mandatory signature verification for CRLs.
 - **Interface-Driven Development**: Defining narrow interfaces for the database layer to ensure the system remains testable and decoupled from Redis if needed.
+- **Observability**: (Planned) Integrating Prometheus metrics for real-time monitoring of responder health.
+
+**Active Responsibilities**:
+- **Integrity Guard**: Ensure all CRLs are verified against their CA before ingestion.
+- **Concurrency Master**: Review and manage mutex locks in `server` and `watcher` to prevent race conditions during hot-reloads.
+- **Performance Analyst**: Optimize the Redis Lua scripts for atomic cache invalidation.
 
 ## 3. SDET Lead (Lead Tester)
 **Summary**: Guards the "Definition of Done" through automation. Focuses on unit, integration, and end-to-end testing to ensure zero-regression deployments.
