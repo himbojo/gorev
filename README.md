@@ -10,8 +10,8 @@
   - `GET /ocsp/<base64req>`: Responds to HTTP GET OCSP requests.
   - `POST /ocsp`: Responds to HTTP POST OCSP requests.
 
-The application uses an asynchronous file watcher (`fsnotify`) to scan the `DATA_DIR` directory for updates to `.pem`, `.crl`, and `.pfx` files in real-time, and updates the in-memory CAs/responders and Redis immediately. 
-It supports multiple CAs and multiple Responder certificates intuitively pairing `.pem` certificates to their private keys if they match.
+The application uses an asynchronous file watcher (`fsnotify`) to scan the `DATA_DIR` directory for updates in three explicit subdirectories (`cas/`, `crls/`, `responders/`) in real-time, and updates the in-memory CAs/responders and Redis immediately. 
+It supports multiple CAs and multiple Responder certificates intuitively pairing `.pem` responder certificates to their private keys via public key matching. PFX files are not supported to prevent static password hardcoding.
 
 ## Getting Started
 
@@ -24,7 +24,7 @@ Requires Go 1.22+.
 
 ### Docker Deployment
 The quickest way to deploy the responder and its required Redis instance is via Docker Compose.
-Sample certificates are provided in the `examples/` directory and are mounted automatically using `docker-compose.yml` for basic production/example usage.
+Certificates should be placed in the `data/` directory (`data/cas/`, `data/crls/`, `data/responders/`), which is mounted automatically using `docker-compose.yml` for production usage.
 
 If you are running the automated E2E tests, `docker-compose.test.yml` will mount the generated `test-data/` directory instead to isolate test artifacts.
 
@@ -37,13 +37,18 @@ Once the responder is running (e.g. on localhost:8080), you can test the endpoin
 
 **CRL Fetching**
 ```bash
-curl -s http://localhost:8080/CRL/Lab-Root-CA.crl | openssl crl -inform DER -text -noout
+curl -s http://localhost:8080/crls/Lab-Root-CA.crl | openssl crl -inform DER -text -noout
 ```
 
 **OCSP Request**
 ```bash
-openssl ocsp -CAfile examples/ca.pem -issuer examples/ca.pem -cert examples/valid-cert.pem -url http://localhost:8080/ocsp -VAfile examples/ocsp-1-cert.pem
+openssl ocsp -CAfile data/cas/ca.pem -issuer data/cas/ca.pem -cert data/clients/valid-cert.pem -url http://localhost:8080/ocsp -VAfile data/responders/ocsp-1-cert.pem
 ```
+
+## Automated Testing
+An automated end-to-end testing suite is included in the `scripts/` directory:
+- `generate_pki.sh`: Completely scaffolds out multi-tier Certificate Authorities, issue valid/revoked end entities, and generates CRL and OCSP responder credentials in a new `test-data/` folder.
+- `test_e2e.sh`: Wraps the PKI generation, spins up the docker environment natively evaluating the `test-data/` artifacts, and executes client assertions using openssl to test positive/negative status code paths.
 
 ## Agentic Development
 For detailed project context and agent instructions, see `.agent/project-context.md`. Follow [Effective Go](https://go.dev/doc/effective_go) for all code modifications.
