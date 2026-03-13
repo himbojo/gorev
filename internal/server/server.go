@@ -58,7 +58,7 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
-		reqBytes, err = io.ReadAll(r.Body)
+		reqBytes, err = io.ReadAll(io.LimitReader(r.Body, 64*1024))
 	case http.MethodGet:
 		b64 := r.URL.Path
 		for _, pfx := range s.ocspPrefixes {
@@ -150,7 +150,9 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 	cachedResp, err := s.db.GetCachedResponse(r.Context(), issuerName, ocspReq.SerialNumber)
 	if err == nil && len(cachedResp) > 0 {
 		w.Header().Set("Content-Type", "application/ocsp-response")
-		w.Write(cachedResp)
+		if _, err := w.Write(cachedResp); err != nil {
+			log.Printf("Warning: failed to write cached OCSP response: %v", err)
+		}
 		return
 	}
 
@@ -196,7 +198,9 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/ocsp-response")
-	w.Write(respBytes)
+	if _, err := w.Write(respBytes); err != nil {
+		log.Printf("Warning: failed to write OCSP response: %v", err)
+	}
 }
 
 func isIssuerMatch(issuer *x509.Certificate, req *ocsp.Request) bool {

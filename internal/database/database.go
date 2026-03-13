@@ -29,7 +29,7 @@ func (db *DB) ReplaceBulkRevocations(ctx context.Context, caName string, serials
 	pipe.Del(ctx, key)
 	
 	if len(serials) > 0 {
-		var members []interface{}
+		var members []any
 		for _, s := range serials {
 			members = append(members, fmt.Sprintf("%x", s))
 		}
@@ -55,7 +55,7 @@ func (db *DB) GetCachedResponse(ctx context.Context, caName string, serial *big.
 // CacheResponse saves a computed OCSP response to Redis with a TTL.
 func (db *DB) CacheResponse(ctx context.Context, caName string, serial *big.Int, response []byte, ttl time.Duration) error {
 	key := fmt.Sprintf("ocsp:cache:%s:%x", caName, serial)
-	return db.client.SetEx(ctx, key, response, ttl).Err()
+	return db.client.Set(ctx, key, response, ttl).Err()
 }
 
 // InvalidateCache wipes all dynamically cached OCSP responses.

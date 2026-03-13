@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
-	"fmt"
 	"log"
 	"math/big"
 	"net/http"
@@ -35,13 +34,13 @@ func main() {
 	caEndpoints := parseEndpoints("ENDPOINTS_CA", "/cas")
 	chainEndpoints := parseEndpoints("ENDPOINTS_CHAIN", "")
 
-	fmt.Printf("Starting gorev\n")
-	fmt.Printf("Redis Address: %s\n", redisAddr)
-	fmt.Printf("Data Directory: %s\n", dataDir)
-	fmt.Printf("OCSP Endpoints: %v\n", ocspEndpoints)
-	fmt.Printf("CRL Endpoints: %v\n", crlEndpoints)
-	fmt.Printf("CA Endpoints: %v\n", caEndpoints)
-	fmt.Printf("Chain Endpoints: %v\n", chainEndpoints)
+	log.Printf("Starting gorev")
+	log.Printf("Redis Address: %s", redisAddr)
+	log.Printf("Data Directory: %s", dataDir)
+	log.Printf("OCSP Endpoints: %v", ocspEndpoints)
+	log.Printf("CRL Endpoints: %v", crlEndpoints)
+	log.Printf("CA Endpoints: %v", caEndpoints)
+	log.Printf("Chain Endpoints: %v", chainEndpoints)
 
 	db := database.New(redisAddr)
 	srv := server.New(db, dataDir, ocspEndpoints)
@@ -120,37 +119,37 @@ func main() {
 					continue
 				}
 				path := filepath.Join(crlDir, file.Name())
-			crl, err := parser.LoadCRL(path)
-			if err != nil {
-				log.Printf("Failed to load CRL %s: %v", file.Name(), err)
-				continue
-			}
+				crl, err := parser.LoadCRL(path)
+				if err != nil {
+					log.Printf("Failed to load CRL %s: %v", file.Name(), err)
+					continue
+				}
 
-			crlIssuerCN := crl.Issuer.CommonName
+				crlIssuerCN := crl.Issuer.CommonName
 
-			var caName string
-			for _, ca := range caCerts {
-				if ca.Subject.CommonName == crlIssuerCN {
-					caName = ca.Subject.CommonName
-					break
+				var caName string
+				for _, ca := range caCerts {
+					if ca.Subject.CommonName == crlIssuerCN {
+						caName = ca.Subject.CommonName
+						break
+					}
+				}
+				if caName == "" {
+					caName = crlIssuerCN
+				}
+
+				var revokedSerials []*big.Int
+				for _, rev := range crl.RevokedCertificates {
+					revokedSerials = append(revokedSerials, rev.SerialNumber)
+				}
+
+				err = db.ReplaceBulkRevocations(context.Background(), caName, revokedSerials)
+				if err != nil {
+					log.Printf("Failed to update database for CRL %s: %v", file.Name(), err)
+				} else {
+					log.Printf("Loaded CRL %s with %d revoked certs for CA %s", file.Name(), len(revokedSerials), caName)
 				}
 			}
-			if caName == "" {
-				caName = crlIssuerCN
-			}
-
-			var revokedSerials []*big.Int
-			for _, rev := range crl.RevokedCertificates {
-				revokedSerials = append(revokedSerials, rev.SerialNumber)
-			}
-
-			err = db.ReplaceBulkRevocations(context.Background(), caName, revokedSerials)
-			if err != nil {
-				log.Printf("Failed to update database for CRL %s: %v", file.Name(), err)
-			} else {
-				log.Printf("Loaded CRL %s with %d revoked certs for CA %s", file.Name(), len(revokedSerials), caName)
-			}
-		}
 		} // Close if crlFiles
 
 		// Ensure cache is wiped so no old revocations are served
@@ -229,7 +228,7 @@ func main() {
 	}
 
 	port := "8080"
-	fmt.Printf("Listening on :%s\n", port)
+	log.Printf("Listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
