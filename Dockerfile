@@ -8,11 +8,11 @@ COPY . .
 RUN go mod tidy
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/rev-responder main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/gorev main.go
 
 FROM alpine:latest
 WORKDIR /root/
-COPY --from=builder /app/rev-responder .
+COPY --from=builder /app/gorev .
 
 EXPOSE 8080
-CMD ["./rev-responder"]
+CMD ["./gorev"]

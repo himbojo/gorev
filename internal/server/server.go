@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jordan/rev-responder/internal/database"
+	"github.com/himbojo/gorev/internal/database"
 	"golang.org/x/crypto/ocsp"
 )
 

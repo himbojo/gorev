@@ -1,7 +1,7 @@
-# Project Context: rev-responder
+# Project Context: gorev
 
 ## Overview
-`rev-responder` is a custom Go-based webserver designed to act as both a **Certificate Revocation List (CRL) endpoint** and an **Online Certificate Status Protocol (OCSP) responder**. 
+`gorev` is a custom Go-based webserver designed to act as both a **Certificate Revocation List (CRL) endpoint** and an **Online Certificate Status Protocol (OCSP) responder**.  
 It utilizes **Redis** as a fast, in-memory backend database to store and query the revocation status of certificates.
 It is deployed using **Docker** and **Docker Compose**, running the Go responder server and the Redis database in adjacent containers.
 

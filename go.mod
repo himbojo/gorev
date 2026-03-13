@@ -1,4 +1,4 @@
-module github.com/jordan/rev-responder
+module github.com/himbojo/gorev
 
 go 1.22
 

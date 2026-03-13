@@ -13,10 +13,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jordan/rev-responder/internal/database"
-	"github.com/jordan/rev-responder/internal/parser"
-	"github.com/jordan/rev-responder/internal/server"
-	"github.com/jordan/rev-responder/internal/watcher"
+	"github.com/himbojo/gorev/internal/database"
+	"github.com/himbojo/gorev/internal/parser"
+	"github.com/himbojo/gorev/internal/server"
+	"github.com/himbojo/gorev/internal/watcher"
 )
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 		dataDir = "."
 	}
 
-	fmt.Printf("Starting rev-responder\n")
+	fmt.Printf("Starting gorev\n")
 	fmt.Printf("Redis Address: %s\n", redisAddr)
 	fmt.Printf("Data Directory: %s\n", dataDir)
 
