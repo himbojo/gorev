@@ -1,0 +1,12 @@
+*.pem
+*.pfx
+*.crl
+*.key
+*.crt
+# Binaries
+rev-responder
+# Docker overrides
+docker-compose.override.yml
+# IDE / OS files
+.DS_Store
+.vscode/
