@@ -110,6 +110,13 @@ docker compose down
 
 The test is guarded by the `integration` build tag so it does not run during normal `go test ./...`.
 
+## Security
+
+`gorev` is built with a security-first mindset:
+- **Threat Modeling**: See our initial [Threat Model](.agent/threat-model.md) for details on trust boundaries and mitigations.
+- **Supply Chain**: Periodic scanning with `govulncheck`.
+- **Minimal Surface**: Runs as non-root in a minimal Alpine-based container.
+
 ## Agentic Development
 For detailed project context and agent instructions, see [.agent/project-context.md](.agent/project-context.md). 
 Review the [Technical Retrospective (v1.0.0-beta)](.agent/retrospectives/v1.0.0-beta.md) for architectural insights. 
