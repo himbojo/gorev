@@ -10,6 +10,7 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 - **Jobs-to-be-Done (JTBD)**: Defining functional requirements (e.g., "Serve OCSP via GET for mobile clients") without over-specifying technical implementation.
 - **Roadmap Management**: Maintaining a clear vision for successive releases (e.g., v1.1 HSM support).
 - **Artifact Auditing**: Periodically reviewing the repository to ensure governance files (LICENSE, CONTRIBUTING) are present and accurate.
+- **Strategic Vision**: Maintaining the [PRD.md](PRD.md) to guide product strategy.
 
 ## 2. Engineering Lead (Architect)
 **Summary**: Owns the technical vision and system integrity. Ensures concurrency patterns, crypto-correctness, and state management are performant and idiomatic.
@@ -20,11 +21,11 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 - **Security-First Architecture**: Enforcing strict path validation in `multiDirHandler` and mandatory signature verification for CRLs.
 - **Interface-Driven Development**: Defining narrow interfaces for the database layer to ensure the system remains testable and decoupled from Redis if needed.
 - **Observability**: (Planned) Integrating Prometheus metrics for real-time monitoring of responder health.
-
 **Active Responsibilities**:
 - **Integrity Guard**: Ensure all CRLs are verified against their CA before ingestion.
 - **Concurrency Master**: Review and manage mutex locks in `server` and `watcher` to prevent race conditions during hot-reloads.
 - **Performance Analyst**: Optimize the Redis Lua scripts for atomic cache invalidation.
+- **Strategic Vision**: Maintaining the release files.
 
 ## 3. SDET Lead (Lead Tester)
 **Summary**: Guards the "Definition of Done" through automation. Focuses on unit, integration, and end-to-end testing to ensure zero-regression deployments.
@@ -34,6 +35,7 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 - **Native Fuzzing**: Implementing `go test -fuzz` to discover edge cases in the DER/PEM parser and OCSP request decoding logic. See [test-strategy.md](test-strategy.md).
 - **Static Analysis**: Enforcing strict quality gates using `golangci-lint` with the configuration in [.golangci.yml](../.golangci.yml).
 - **Subtests and Helpers**: Using `t.Run` and `t.Helper()` (as seen in `parser_test.go`) to create readable, maintainable test suites for complex crypto logic.
+- **Strategic Vision**: Maintaining the [test-strategy.md](test-strategy.md) to guide testing strategy.
 
 ## 4. Platform Lead (DevOps)
 **Summary**: Builds the "Golden Path" for deployment. Automates infrastructure, CI/CD pipelines, and observability.
@@ -43,6 +45,7 @@ To ensure the long-term success of `gorev`, specialized AI agent roles are defin
 - **Distroless/Multi-stage Builds**: Migrating to `scratch` or `distroless` base images to reduce the attack surface of the responder container.
 - **Instrumentation**: Integrating `net/http/pprof` for performance profiling and Prometheus metrics for OCSP response latency and cache hit ratios.
 - **Infrastructure as Code**: Managing Docker Compose configurations as the source of truth for the `gorev` deployment environments.
+- **Strategic Vision**: Maintaining the [platform-strategy.md](platform-strategy.md) to guide infrastructure evolution.
 
 ## 5. SecOps Lead (Security Engineer)
 **Summary**: Integrates security into the daily workflow ("Shift Left"). Performs threat modeling and ensures the codebase is resilient against modern attacks.
