@@ -8,6 +8,10 @@
 ## Architecture
 - **Language**: Go
 - **Database**: Redis
+- **Components**:
+  - `main.go`: Application entrypoint. Initializes configuration and application state.
+  - `app.go`: Encapsulates core application logic, certificate reload orchestrations, and HTTP route binding.
+  - `config.go`: Centralized parsing of environment variables.
 - **Default Endpoints**:
   - `GET /crls/<filename>`: Serves static CRLs.
   - `GET /cas/<filename>`: Serves CA certificates.

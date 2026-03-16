@@ -12,7 +12,9 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
   - `github.com/fsnotify/fsnotify` for directory watching.
   - `golang.org/x/crypto/ocsp` for OCSP request parsing and response generation.
 - **Components**:
-  - `main.go`: Application entrypoint. Initializes the Redis client (with optional password auth), server, and background file watcher. Parses files from `DATA_DIR` at startup and registers configurable multi-endpoint HTTP routes for OCSP, CRL, CA, and Chain services. Uses a `multiDirHandler` with symlink-resolved path validation and mandatory `filepath.Abs` error handling to prevent traversal attacks. CRLs are signature-verified against their issuing CA before loading. Graceful shutdown on SIGTERM/SIGINT via `http.Server.Shutdown`.
+  - `main.go`: Application entrypoint. Initializes configuration and application state, and starts the core services. Graceful shutdown on SIGTERM/SIGINT via `http.Server.Shutdown`.
+  - `app.go`: Encapsulates application state (`App` struct), configures `multiDirHandler` paths mapped to HTTP routes, and houses the `ReloadPKI` polling business logic. CRLs are signature-verified against their issuing CA before loading.
+  - `config.go`: Contains `Config` structural models and functions for aggressively parsing nested `ENDPOINTS_*` environment variables with graceful fallbacks.
   - `internal/database`: Connects to Redis with optional password authentication. Manages sets of revoked certificate serials per CA (`ca:{caName}:revoked`), and actively serves an OCSP response cache. Uses `redis.Set` with TTL (not the deprecated `SetEx`). Cache invalidation uses an atomic Lua script.
   - `internal/parser`: Decodes and parses PEM CA certificates, CRLs (PEM or DER), and PEM responder certificates and keys.
   - `internal/server`: Thread-safe HTTP handlers for OCSP. Strictly matches the issuer from the OCSP request — returns OCSP Unauthorized (RFC 6960) when no matching CA is found (no silent fallbacks). POST body is limited to 64KB via `io.LimitReader`.
