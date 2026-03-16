@@ -23,6 +23,11 @@ func main() {
 
 	log.Printf("Starting gorev")
 	log.Printf("Redis Address: %s", sanitizeLog(cfg.RedisAddr))  // #nosec G706 -- sanitizeLog strips newlines
+	if cfg.RedisPassword != "" {
+		log.Println("Redis Authentication: Password is set")
+	} else {
+		log.Println("Redis Authentication: No password set (INSECURE)")
+	}
 	log.Printf("Data Directory: %s", sanitizeLog(cfg.DataDir))  // #nosec G706 -- sanitizeLog strips newlines
 	log.Printf("OCSP Endpoints: %v", cfg.OCSPEndpoints)
 	log.Printf("CRL Endpoints: %v", cfg.CRLEndpoints)
