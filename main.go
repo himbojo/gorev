@@ -63,7 +63,7 @@ func main() {
 		caDir := filepath.Join(dataDir, "cas")
 		if caFiles, err := os.ReadDir(caDir); err == nil {
 			for _, f := range caFiles {
-				if f.IsDir() || !strings.HasSuffix(strings.ToLower(f.Name()), ".pem") {
+				if f.IsDir() || !isValidExt(f.Name()) {
 					continue
 				}
 				path := filepath.Join(caDir, f.Name())
@@ -80,7 +80,7 @@ func main() {
 		respDir := filepath.Join(dataDir, "responders")
 		if respFiles, err := os.ReadDir(respDir); err == nil {
 			for _, f := range respFiles {
-				if f.IsDir() || !strings.HasSuffix(strings.ToLower(f.Name()), ".pem") {
+				if f.IsDir() || !isValidExt(f.Name()) {
 					continue
 				}
 				path := filepath.Join(respDir, f.Name())
@@ -113,6 +113,13 @@ func main() {
 			}
 		}
 
+		if len(caCerts) == 0 {
+			log.Println("WARNING: No CA certificates were loaded from data/cas/! The responder cannot function properly.")
+		}
+		if len(respCerts) == 0 {
+			log.Println("WARNING: No valid responder certificates with matching private keys were loaded from data/responders/! It cannot sign OCSP responses.")
+		}
+
 		srv.UpdateCerts(caCerts, respCerts, respKeys)
 
 		// Invalidate cache BEFORE loading new CRL data so stale cached responses
@@ -124,6 +131,7 @@ func main() {
 		}
 
 		// Now load CRLs and update DB
+		var loadedCRLs int
 		crlDir := filepath.Join(dataDir, "crls")
 		if crlFiles, err := os.ReadDir(crlDir); err == nil {
 			for _, file := range crlFiles {
@@ -170,9 +178,14 @@ func main() {
 					log.Printf("Failed to update database for CRL %s: %v", file.Name(), err)
 				} else {
 					log.Printf("Loaded CRL %s with %d revoked certs for CA %s (signature verified)", file.Name(), len(revokedSerials), caName)
+					loadedCRLs++
 				}
 			}
 		} // Close if crlFiles
+
+		if loadedCRLs == 0 {
+			log.Println("WARNING: No CRLs were loaded! The responder will not know of any revocations.")
+		}
 	} // Close reload func
 
 	reload()
@@ -332,4 +345,14 @@ func parseEndpoints(envVar, fallback string) []string {
 		endpoints = append(endpoints, p)
 	}
 	return endpoints
+}
+
+// isValidExt checks if a file extension is commonly used for certificates or keys.
+func isValidExt(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	switch ext {
+	case ".pem", ".crt", ".cer", ".der", ".key":
+		return true
+	}
+	return false
 }

@@ -43,6 +43,13 @@ environment:
 
 Multiple service types can share the same path (e.g., `/`). When paths overlap, the server searches each source directory in order and serves the first file match found.
 
+## Data Directory
+The `gorev` server dynamically loads the Public Key Infrastructure (PKI) based on the contents of the `DATA_DIR` (which defaults to `.` locally, but `/data` in the provided Docker images).
+For the responder to function properly, the following subdirectory structure is required (e.g. within `/data` for Docker):
+- `cas/`: Place Certificate Authority certificates here (e.g., `/data/cas/`). Ensure that missing CAs are placed here otherwise signature validation will fail for CRLs. Supported formats: `.pem`, `.crt`, `.cer`, `.der`.
+- `crls/`: Place Certificate Revocation Lists here (e.g., `/data/crls/`). Supported formats: `.crl`.
+- `responders/`: Place dedicated OCSP responder certificates and their matching private keys here (e.g., `/data/responders/`). Supported formats: `.pem`, `.crt`, `.cer`, `.der` for certs and `.pem`, `.key`, `.der` for keys.
+
 ## Getting Started
 
 ### Local Build and Testing
@@ -73,6 +80,20 @@ curl -s http://localhost:8080/crls/Lab-Root-CA.crl | openssl crl -inform DER -te
 **OCSP Request**
 ```bash
 openssl ocsp -CAfile data/cas/ca.pem -issuer data/cas/ca.pem -cert data/clients/valid-cert.pem -url http://localhost:8080/ocsp -VAfile data/responders/ocsp-1-cert.pem
+```
+
+### Corporate Proxy Cabundle
+If deploying or using `gorev` behind a corporate proxy, you may need to update your client or system cabundle to trust the internal infrastructure. 
+Use a **chain file** containing all the individual CAs concatenated together. This aggregate file contains all the necessary root and intermediate CAs required to be added to the trust store, which can be configured within your proxy or provided to your client tools (like via the `-CAfile` argument in `openssl`).
+
+For Alpine-based Docker images (like the default `Dockerfile` provided), you can install a custom cabundle by copying it into `/usr/local/share/ca-certificates/` and running `update-ca-certificates`:
+
+```dockerfile
+# Example snippet for appending to a Dockerfile
+USER root
+COPY corporate-chain.crt /usr/local/share/ca-certificates/corporate-chain.crt
+RUN update-ca-certificates
+USER gorev
 ```
 
 ## Automated Testing
