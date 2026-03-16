@@ -13,8 +13,9 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
   - `golang.org/x/crypto/ocsp` for OCSP request parsing and response generation.
 - **Components**:
   - `main.go`: Application entrypoint. Initializes configuration and application state, and starts the core services. Graceful shutdown on SIGTERM/SIGINT via `http.Server.Shutdown`.
-  - `app.go`: Encapsulates application state (`App` struct), configures `multiDirHandler` paths mapped to HTTP routes, and houses the `ReloadPKI` polling business logic. CRLs are signature-verified against their issuing CA before loading.
-  - `config.go`: Contains `Config` structural models and functions for aggressively parsing nested `ENDPOINTS_*` environment variables with graceful fallbacks.
+  - `app.go`: Encapsulates core application logic, certificate reload orchestrations, and HTTP route binding. Houses the `ReloadPKI` event-driven business logic. CRLs are signature-verified against their issuing CA before loading.
+  - `config.go`: Centralized parsing of environment variables.
+  - `internal/report`: Generates human-readable reload summaries, including directory tree visualizations and import metrics.
   - `internal/database`: Connects to Redis with optional password authentication. Manages sets of revoked certificate serials per CA (`ca:{caName}:revoked`), and actively serves an OCSP response cache. Uses `redis.Set` with TTL (not the deprecated `SetEx`). Cache invalidation uses an atomic Lua script.
   - `internal/parser`: Decodes and parses PEM CA certificates, CRLs (PEM or DER), and PEM responder certificates and keys.
   - `internal/server`: Thread-safe HTTP handlers for OCSP. Strictly matches the issuer from the OCSP request — returns OCSP Unauthorized (RFC 6960) when no matching CA is found (no silent fallbacks). POST body is limited to 64KB via `io.LimitReader`.
@@ -94,8 +95,8 @@ This generates a 1M-entry CRL in-memory, tests the full parse → Redis → OCSP
   - **Ephemeral Redis** — no disk persistence, no named volume, not exposed to host network.
   - **Log injection prevention** — `sanitizeLog()` strips `\n`/`\r` from user-controlled config values before logging.
   - **Directory permissions** — PKI data directories created at `0750`, not world-readable.
-  - **Stripped binary** — built with `-trimpath -ldflags="-s -w"` to remove debug paths and symbols.
-  - **Supply chain** — Dockerfile uses `go mod download` (not `go mod tidy`) against pinned `go.sum` hashes; `govulncheck` passes with zero findings.
+  - **Enhanced Path Resolution** — `multiDirHandler` uses mandatory `filepath.EvalSymlinks` and `filepath.Abs` validation to prevent traversal attacks.
+  - **Security Warnings** — Emits explicit warnings at startup if `REDIS_PASSWORD` is empty or if `DATA_DIR` is left as the default (local) directory.
 - Dependencies: `github.com/redis/go-redis/v9` upgraded to `v9.6.3` (GO-2025-3540 patched).
 - Static analysis: `gosec` passes with 0 issues (4 justified suppressions documented).
 - Performance scaling verified with 1M-entry CRL stress testing.

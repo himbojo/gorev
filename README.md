@@ -12,6 +12,7 @@
   - `main.go`: Application entrypoint. Initializes configuration and application state.
   - `app.go`: Encapsulates core application logic, certificate reload orchestrations, and HTTP route binding.
   - `config.go`: Centralized parsing of environment variables.
+  - `internal/report`: Generates human-readable reload summaries and import metrics.
 - **Default Endpoints**:
   - `GET /crls/<filename>`: Serves static CRLs.
   - `GET /cas/<filename>`: Serves CA certificates.
@@ -155,17 +156,16 @@ The test is guarded by the `integration` build tag so it does not run during nor
 
 `gorev` is built with a security-first mindset:
 - **Threat Modeling**: See our initial [Threat Model](.agent/threat-model.md) for details on trust boundaries and mitigations.
-- **Supply Chain**: Dependencies are pinned and verified via `go.sum`. Dockerfile uses `go mod download` (not `go mod tidy`) to prevent re-resolution at build time. `govulncheck` passes with zero findings. `go-redis` upgraded to `v9.6.3` (patching GO-2025-3540).
-- **Static Analysis**: `gosec` passes with 0 issues across all packages.
-- **Race Detection**: `go test -race` passes cleanly across all packages.
-- **HTTP Hardening**: Server is configured with `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, and `IdleTimeout` to prevent Slowloris and slow-response attacks.
-- **Mandatory Redis Auth**: Redis requires a password in all environments — no unauthenticated fallback. `scripts/start.sh` auto-generates a 256-bit ephemeral password per session. Redis is ephemeral (no disk persistence) and not exposed to the host network.
-- **Log Injection Prevention**: User-controlled config values are sanitized via `sanitizeLog()` before being written to the log.
-- **Path Traversal**: All parser file-loading functions apply `filepath.Clean` and reject paths containing `..` before any file I/O.
-- **Minimal Surface**: Runs as non-root (UID 1001) in a minimal Alpine-based container. Binary is built with `-trimpath -ldflags="-s -w"` to remove debug symbols and source paths. PKI directories are created with `0750` permissions.
-- **Resource Protection**: Docker deployment includes strict CPU and Memory limits (2GB RAM, 2 CPU) to prevent resource exhaustion attacks.
-- **Robustness**: Path resolution in `multiDirHandler` uses mandatory `filepath.EvalSymlinks` and hardened `filepath.Abs` error handling to prevent traversal attacks.
-- **Plain HTTP by Design**: OCSP and CRL endpoints intentionally operate over plain HTTP per RFC 6960/5280 — enforcing TLS would create a chicken-and-egg dependency preventing clients from validating the certificates needed to establish the TLS connection.
+- **Supply Chain**: Dependencies are pinned and verified via `go.sum`. Dockerfile uses `go mod download` to prevent re-resolution. `govulncheck` passes with zero findings. `go-redis` upgraded to `v9.6.3`.
+- **Static Analysis**: `gosec` passes with 0 issues.
+- **Race Detection**: `go test -race` passes cleanly.
+- **HTTP Hardening**: Server is configured with strict timeouts (`ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`) to mitigate Slowloris attacks.
+- **Mandatory Redis Auth**: Redis requires a password in all environments. `scripts/start.sh` auto-generates a 256-bit ephemeral password. A **SECURITY WARNING** is emitted at startup if no password is provided.
+- **Log Injection Prevention**: User-controlled config values and paths are sanitized via `sanitizeLog()` before being written to the log.
+- **Path Traversal**: All file-loading functions apply `filepath.Clean` and reject `..` segments. `multiDirHandler` uses mandatory `filepath.EvalSymlinks` and `filepath.Abs` validation.
+- **Hardened Container**: Runs as non-root (UID 1001) in a minimal Alpine-based container. Binary is stripped (`-s -w`). PKI directories are created with `0750` permissions.
+- **Resource Protection**: Strict CPU and Memory limits (2GB RAM, 2 CPU).
+- **Plain HTTP by Design**: Enforces CRL/OCSP standards correctly without creating TLS chicken-and-egg trust issues.
 
 ## Agentic Development
 For detailed project context and agent instructions, see [.agent/project-context.md](.agent/project-context.md). 

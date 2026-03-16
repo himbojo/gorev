@@ -7,8 +7,8 @@
 # external monitoring), set REDIS_PASSWORD in your shell before running.
 #
 # Usage:
-#   ./scripts/start.sh                  # production compose
-#   ./scripts/start.sh --test           # test compose (docker-compose.test.yml)
+#   ./scripts/start.sh [up|down|ps|...]   # production compose
+#   ./scripts/start.sh --test [up|...]     # test compose
 
 set -eu
 
@@ -18,18 +18,27 @@ if [ "${1:-}" = "--test" ]; then
   shift
 fi
 
-# Generate a 32-byte (256-bit) random password if not already set.
+# The first remaining argument is the docker-compose command (default: up)
+CMD="${1:-up}"
+
+# Only generate/export a password if we are starting services or running a command.
+# For 'down', 'ps', 'logs', etc., we still export it to silence warnings in the .yml,
+# but 'start.sh' is the preferred entrypoint for all compose actions now.
 if [ -z "${REDIS_PASSWORD:-}" ]; then
-  # openssl is available in virtually every environment; fall back to /dev/urandom.
   if command -v openssl >/dev/null 2>&1; then
     REDIS_PASSWORD="$(openssl rand -base64 32 | tr -d '/+=' | head -c 44)"
   else
     REDIS_PASSWORD="$(head -c 33 /dev/urandom | base64 | tr -d '/+=' | head -c 44)"
   fi
-  echo "Generated ephemeral Redis password (not stored, valid for this session only)."
+  # Only announce generation for commands that actually use it.
+  case "$CMD" in
+    up|run|start|recreate)
+      echo "Generated ephemeral Redis password (not stored, valid for this session only)."
+      ;;
+  esac
 fi
 
 export REDIS_PASSWORD
 
-echo "Starting gorev via docker compose (file: ${COMPOSE_FILE})..."
-exec docker compose -f "${COMPOSE_FILE}" up "$@"
+echo "Running docker compose -f ${COMPOSE_FILE} $@..."
+exec docker compose -f "${COMPOSE_FILE}" "$@"

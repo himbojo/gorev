@@ -1,9 +1,9 @@
 services:
   redis:
     image: redis:7-alpine
-    command: redis-server --requirepass "${REDIS_PASSWORD}" --save "" --appendonly no
+    command: redis-server --requirepass "${REDIS_PASSWORD:-}" --save "" --appendonly no
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     restart: unless-stopped
 
   responder:
@@ -16,7 +16,7 @@ services:
       - ./test-data:/data:ro
     environment:
       - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - DATA_DIR=/data
     depends_on:
       - redis
