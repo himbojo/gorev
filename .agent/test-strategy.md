@@ -24,7 +24,7 @@ We follow a structured testing pyramid to ensure fast feedback and high confiden
 ### Performance & Stress Tests
 - **Scope**: System behavior under heavy load (1M+ CRL entries).
 - **Goal**: Ensure latency targets are met for signed response generation.
-- **Execution**: `go test -v -tags integration -run TestLargeCRL ./...`
+- **Execution**: `go test -v -tags integration -run TestLargeCRL ./...` (requires a running Redis instance on `localhost:6379`).
 
 ## 2. Quality Gates
 

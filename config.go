@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"strings"
 )
@@ -35,6 +36,15 @@ func LoadConfig() *Config {
 	cfg.CRLEndpoints = parseEndpoints("ENDPOINTS_CRL", "/crls")
 	cfg.CAEndpoints = parseEndpoints("ENDPOINTS_CA", "/cas")
 	cfg.ChainEndpoints = parseEndpoints("ENDPOINTS_CHAIN", "")
+
+	// Security warnings — fail loudly on insecure defaults so they aren't silently
+	// carried into production.
+	if cfg.RedisPassword == "" {
+		log.Println("SECURITY WARNING: REDIS_PASSWORD is not set — Redis connection is unauthenticated. Set REDIS_PASSWORD in production.")
+	}
+	if cfg.DataDir == "." {
+		log.Println("SECURITY WARNING: DATA_DIR is not set — using the current working directory. Set DATA_DIR to an explicit path in production.")
+	}
 
 	return cfg
 }

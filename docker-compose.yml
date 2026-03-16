@@ -1,20 +1,14 @@
 services:
   redis:
     image: redis:7-alpine
-    command: >
-      sh -c '
-        if [ -n "$$REDIS_PASSWORD" ]; then
-          redis-server --requirepass "$$REDIS_PASSWORD"
-        else
-          redis-server
-        fi
-      '
+    # Password is mandatory — no fallback to unauthenticated mode.
+    # Use ./scripts/start.sh to auto-generate an ephemeral password, or
+    # export REDIS_PASSWORD before calling docker compose.
+    command: redis-server --requirepass "${REDIS_PASSWORD}" --save "" --appendonly no
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-    ports:
-      - "127.0.0.1:6379:6379"
-    volumes:
-      - redis_data:/data
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    # Redis is internal only — not exposed to the host. The responder
+    # reaches it via the compose network.
     restart: unless-stopped
     deploy:
       resources:
@@ -32,7 +26,7 @@ services:
       - ./data:/data:ro # Mount the local data directory (certs, crls, responders) as read-only
     environment:
       - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - DATA_DIR=/data
       # Multi-endpoint examples (comma-separated):
       # - ENDPOINTS_OCSP=/ocsp,/responder
@@ -47,6 +41,3 @@ services:
         limits:
           cpus: '2'
           memory: 2GB
-
-volumes:
-  redis_data:
