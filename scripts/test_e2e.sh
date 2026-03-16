@@ -10,7 +10,7 @@ echo "======= 1. Generating PKI ======="
 echo "======= 2. Starting Docker Services ======="
 cd "$ROOT_DIR"
 # Use start.sh to ensure REDIS_PASSWORD is set correctly
-./scripts/start.sh --test -d --build
+./scripts/start.sh --test up -d --build
 
 echo "Waiting for services to spin up..."
 sleep 5

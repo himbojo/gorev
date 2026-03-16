@@ -19,7 +19,11 @@ if [ "${1:-}" = "--test" ]; then
 fi
 
 # The first remaining argument is the docker-compose command (default: up)
-CMD="${1:-up}"
+# If the argument starts with a dash (-), it's a flag, so we assume 'up' is intended.
+if [ "${1:-}" = "" ] || echo "${1:-}" | grep -q "^-"; then
+  set -- up "$@"
+fi
+CMD="$1"
 
 # Only generate/export a password if we are starting services or running a command.
 # For 'down', 'ps', 'logs', etc., we still export it to silence warnings in the .yml,

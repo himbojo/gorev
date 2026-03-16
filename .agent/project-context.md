@@ -28,8 +28,9 @@ It is deployed using **Docker** and **Docker Compose**, running the Go responder
   - `responder`: Builds from the local `Dockerfile`, runs as non-root user `gorev` (UID 1001). Mounts the `DATA_DIR` containing `.pem` and `.crl` files as read-only. Runtime base image pinned to `alpine:3.21`. Resource limits enforced: 2GB Memory, 2 CPU.
 - **Starting the stack**: Use `./scripts/start.sh` (not `docker compose up` directly). It auto-generates a strong ephemeral `REDIS_PASSWORD` on each run and passes it to both containers. The password is never stored on disk.
   ```sh
-  ./scripts/start.sh          # production
-  ./scripts/start.sh --test   # test compose
+  ./scripts/start.sh up -d        # production (explicit up)
+  ./scripts/start.sh --test -d    # test compose (implicit up)
+  ./scripts/start.sh down         # stop services
   ```
 - **Environment Variables**:
   - `REDIS_ADDR`: DNS/IP and port for the Redis instance (default: `localhost:6379`).

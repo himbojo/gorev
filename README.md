@@ -79,11 +79,11 @@ If you are running the automated E2E tests, `docker-compose.test.yml` will mount
 > Use `./scripts/start.sh` instead of calling `docker compose up` directly. The script auto-generates a strong, ephemeral Redis password on each run — since Redis is a pure in-memory cache, there is no persistent data and nothing to rotate or store.
 
 ```bash
-# Production
+# Production (implicit 'up')
 ./scripts/start.sh -d --build
 
-# Test compose
-./scripts/start.sh --test -d --build
+# Test compose (explicit 'up')
+./scripts/start.sh --test up -d --build
 ```
 
 If you need a fixed password (e.g. for external monitoring or CI), set `REDIS_PASSWORD` in your shell before calling the script — it will be used as-is.
