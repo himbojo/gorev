@@ -109,7 +109,9 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("OCSP request from unknown issuer — no matching CA found")
 		// Return OCSP Unauthorized per RFC 6960 §2.3
 		w.Header().Set("Content-Type", "application/ocsp-response")
-		w.Write(ocsp.UnauthorizedErrorResponse)
+		if _, err := w.Write(ocsp.UnauthorizedErrorResponse); err != nil { // G104: handle write error
+			log.Printf("Warning: failed to write OCSP unauthorized response: %v", err)
+		}
 		return
 	}
 
@@ -141,7 +143,7 @@ func (s *Server) HandleOCSP(w http.ResponseWriter, r *http.Request) {
 	cachedResp, err := s.db.GetCachedResponse(r.Context(), issuerName, ocspReq.SerialNumber)
 	if err == nil && len(cachedResp) > 0 {
 		w.Header().Set("Content-Type", "application/ocsp-response")
-		if _, err := w.Write(cachedResp); err != nil {
+		if _, err := w.Write(cachedResp); err != nil { // #nosec G705 -- cachedResp is binary DER-encoded OCSP data from trusted Redis cache, not user-controlled HTML
 			log.Printf("Warning: failed to write cached OCSP response: %v", err)
 		}
 		return

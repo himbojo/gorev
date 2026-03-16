@@ -6,16 +6,24 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
+
+// sanitizeLog removes newline/carriage-return characters from user-controlled strings
+// before they are written to the log, mitigating log injection (CWE-117 / G706).
+func sanitizeLog(s string) string {
+	r := strings.NewReplacer("\n", "\\n", "\r", "\\r")
+	return r.Replace(s)
+}
 
 func main() {
 	cfg := LoadConfig()
 
 	log.Printf("Starting gorev")
-	log.Printf("Redis Address: %s", cfg.RedisAddr)
-	log.Printf("Data Directory: %s", cfg.DataDir)
+	log.Printf("Redis Address: %s", sanitizeLog(cfg.RedisAddr))  // #nosec G706 -- sanitizeLog strips newlines
+	log.Printf("Data Directory: %s", sanitizeLog(cfg.DataDir))  // #nosec G706 -- sanitizeLog strips newlines
 	log.Printf("OCSP Endpoints: %v", cfg.OCSPEndpoints)
 	log.Printf("CRL Endpoints: %v", cfg.CRLEndpoints)
 	log.Printf("CA Endpoints: %v", cfg.CAEndpoints)
@@ -34,8 +42,12 @@ func main() {
 
 	port := "8080"
 	httpServer := &http.Server{
-		Addr:    ":" + port,
-		Handler: mux,
+		Addr:              ":" + port,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second, // G112: mitigate Slowloris attacks
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	// Graceful shutdown on SIGTERM/SIGINT

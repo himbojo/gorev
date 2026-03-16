@@ -23,7 +23,7 @@ func New(dir string, onChange func()) (*Watcher, error) {
 	for _, sub := range []string{"cas", "crls", "responders"} {
 		p := filepath.Join(dir, sub)
 		// Ensure the directory exists so the watcher doesn't fail
-		if err := os.MkdirAll(p, 0755); err != nil {
+		if err := os.MkdirAll(p, 0750); err != nil { //nolint:gosec // G301: 0750 restricts other-execute
 			log.Printf("Failed to create watch directory %s: %v", p, err)
 		}
 		if err := fw.Add(filepath.Clean(p)); err != nil {

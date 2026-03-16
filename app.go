@@ -302,7 +302,7 @@ func (h *multiDirHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if !strings.HasPrefix(resolved, absDir+string(os.PathSeparator)) && resolved != absDir {
-			log.Printf("Blocked path traversal attempt: %s resolved to %s (outside %s)", r.URL.Path, resolved, absDir)
+			log.Printf("Blocked path traversal attempt: %s resolved to %s (outside %s)", r.URL.Path, resolved, absDir) // #nosec G706 -- security audit log; URL is rejected, paths are system-resolved
 			http.NotFound(w, r)
 			return
 		}

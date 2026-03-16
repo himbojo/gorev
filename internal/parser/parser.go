@@ -6,11 +6,18 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 // LoadCA loads a PEM or DER encoded CA certificate.
+// path must be a canonical, trusted path constructed by the caller.
 func LoadCA(path string) (*x509.Certificate, error) {
-	data, err := os.ReadFile(path)
+	clean := filepath.Clean(path)
+	if strings.Contains(clean, "..") {
+		return nil, fmt.Errorf("path traversal detected in path: %s", path)
+	}
+	data, err := os.ReadFile(clean) //nolint:gosec // G304: path is cleaned and caller-validated
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +33,13 @@ func LoadCA(path string) (*x509.Certificate, error) {
 }
 
 // LoadCRL loads a DER or PEM encoded CRL.
+// path must be a canonical, trusted path constructed by the caller.
 func LoadCRL(path string) (*x509.RevocationList, error) {
-	data, err := os.ReadFile(path)
+	clean := filepath.Clean(path)
+	if strings.Contains(clean, "..") {
+		return nil, fmt.Errorf("path traversal detected in path: %s", path)
+	}
+	data, err := os.ReadFile(clean) //nolint:gosec // G304: path is cleaned and caller-validated
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +54,13 @@ func LoadCRL(path string) (*x509.RevocationList, error) {
 }
 
 // LoadPrivateKey loads a PEM or DER encoded private key (RSA, ECDSA, or Ed25519).
+// path must be a canonical, trusted path constructed by the caller.
 func LoadPrivateKey(path string) (crypto.Signer, error) {
-	data, err := os.ReadFile(path)
+	clean := filepath.Clean(path)
+	if strings.Contains(clean, "..") {
+		return nil, fmt.Errorf("path traversal detected in path: %s", path)
+	}
+	data, err := os.ReadFile(clean) //nolint:gosec // G304: path is cleaned and caller-validated
 	if err != nil {
 		return nil, err
 	}
