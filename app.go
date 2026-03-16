@@ -84,13 +84,21 @@ func (a *App) ReloadPKI() {
 				continue
 			}
 			path := filepath.Join(respDir, f.Name())
-			if key, err := parser.LoadPrivateKey(path); err == nil {
+			key, err1 := parser.LoadPrivateKey(path)
+			if err1 == nil {
 				looseKeys = append(looseKeys, key)
 				log.Printf("Loaded responder key: %s", f.Name())
-			} else if cert, err := parser.LoadCA(path); err == nil {
+				continue
+			}
+			
+			cert, err2 := parser.LoadCA(path)
+			if err2 == nil {
 				looseCerts = append(looseCerts, cert)
 				log.Printf("Loaded responder cert: %s", f.Name())
+				continue
 			}
+			
+			log.Printf("Warning: failed to load responder file %s: key_err=%v, cert_err=%v", f.Name(), err1, err2)
 		}
 	}
 
