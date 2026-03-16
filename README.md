@@ -54,6 +54,11 @@ For the responder to function properly, the following subdirectory structure is 
 - `crls/`: Place Certificate Revocation Lists here (e.g., `/data/crls/`). Supported formats: `.crl`.
 - `responders/`: Place dedicated OCSP responder certificates and their matching private keys here (e.g., `/data/responders/`). Supported formats: `.pem`, `.crt`, `.cer`, `.der` for certs and `.pem`, `.key`, `.der` for keys.
 
+> [!WARNING]
+> **File Permissions in Docker:**
+> The `gorev` docker container is hardended and runs as a non-root user (UID `1001`). If you mount these files directly from your host machine, ensure they are readable by this UID. If your responder private keys are set to `600` (`-rw-------`) and owned by your local host user, the container will encounter `permission denied` errors and fail to load them.
+> You must either ensure the files have world-readable permissions (e.g. `chmod 644`), or alternatively, set the file group to `1001` with `640` permissions for enhanced security.
+
 ## Getting Started
 
 ### Local Build and Testing
