@@ -14,6 +14,7 @@ import (
 
 	"github.com/himbojo/gorev/internal/database"
 	"github.com/himbojo/gorev/internal/parser"
+	"github.com/himbojo/gorev/internal/report"
 	"github.com/himbojo/gorev/internal/server"
 	"github.com/himbojo/gorev/internal/watcher"
 )
@@ -50,7 +51,7 @@ func NewApp(cfg *Config) (*App, error) {
 // It loads certificates, pairs responders, updates the database cache,
 // and parses available CRLs.
 func (a *App) ReloadPKI() {
-	log.Println("Reloading certificates and CRLs from", a.Config.DataDir)
+	log.Println("--- Reloading PKI Data ---")
 
 	var caCerts []*x509.Certificate
 	var respCerts []*x509.Certificate
@@ -58,6 +59,9 @@ func (a *App) ReloadPKI() {
 
 	var looseCerts []*x509.Certificate
 	var looseKeys []crypto.Signer
+
+	summary := report.ImportSummary{}
+	fileStatuses := make(map[string]report.FileStatus)
 
 	// Load CAs
 	caDir := filepath.Join(a.Config.DataDir, "cas")
@@ -69,9 +73,12 @@ func (a *App) ReloadPKI() {
 			path := filepath.Join(caDir, f.Name())
 			if cert, err := parser.LoadCA(path); err == nil {
 				caCerts = append(caCerts, cert)
-				log.Printf("Loaded CA cert: %s", f.Name())
+				log.Printf("Loaded CA cert: %s (Subject: %s)", f.Name(), cert.Subject.CommonName)
+				summary.CACerts++
+				fileStatuses[path] = report.FileStatus{Status: "LOADED", Purpose: "CA Certificate"}
 			} else {
 				log.Printf("Warning: failed to load CA cert %s: %v", f.Name(), err)
+				fileStatuses[path] = report.FileStatus{Status: "FAILED", Purpose: "CA Certificate"}
 			}
 		}
 	}
@@ -88,17 +95,20 @@ func (a *App) ReloadPKI() {
 			if err1 == nil {
 				looseKeys = append(looseKeys, key)
 				log.Printf("Loaded responder key: %s", f.Name())
+				fileStatuses[path] = report.FileStatus{Status: "LOADED", Purpose: "Responder Private Key"}
 				continue
 			}
 			
 			cert, err2 := parser.LoadCA(path)
 			if err2 == nil {
 				looseCerts = append(looseCerts, cert)
-				log.Printf("Loaded responder cert: %s", f.Name())
+				log.Printf("Loaded responder cert: %s (Subject: %s)", f.Name(), cert.Subject.CommonName)
+				fileStatuses[path] = report.FileStatus{Status: "LOADED", Purpose: "Responder Certificate"}
 				continue
 			}
 			
 			log.Printf("Warning: failed to load responder file %s: key_err=%v, cert_err=%v", f.Name(), err1, err2)
+			fileStatuses[path] = report.FileStatus{Status: "FAILED", Purpose: "Responder Key/Cert"}
 		}
 	}
 
@@ -113,19 +123,13 @@ func (a *App) ReloadPKI() {
 				respKeys = append(respKeys, key)
 				matched = true
 				log.Printf("Paired responder cert/key for %s", cert.Subject.CommonName)
+				summary.ResponderPairs++
 				break
 			}
 		}
 		if !matched {
 			log.Printf("Warning: failed to pair responder cert: %s", cert.Subject.CommonName)
 		}
-	}
-
-	if len(caCerts) == 0 {
-		log.Println("WARNING: No CA certificates were loaded from data/cas/! The responder cannot function properly.")
-	}
-	if len(respCerts) == 0 {
-		log.Println("WARNING: No valid responder certificates with matching private keys were loaded from data/responders/! It cannot sign OCSP responses.")
 	}
 
 	a.Server.UpdateCerts(caCerts, respCerts, respKeys)
@@ -139,7 +143,6 @@ func (a *App) ReloadPKI() {
 	}
 
 	// Now load CRLs and update DB
-	var loadedCRLs int
 	crlDir := filepath.Join(a.Config.DataDir, "crls")
 	if crlFiles, err := os.ReadDir(crlDir); err == nil {
 		for _, file := range crlFiles {
@@ -150,6 +153,7 @@ func (a *App) ReloadPKI() {
 			crl, err := parser.LoadCRL(path)
 			if err != nil {
 				log.Printf("Failed to load CRL %s: %v", file.Name(), err)
+				fileStatuses[path] = report.FileStatus{Status: "FAILED", Purpose: "CRL"}
 				continue
 			}
 
@@ -167,10 +171,12 @@ func (a *App) ReloadPKI() {
 			if matchedCA != nil {
 				if err := crl.CheckSignatureFrom(matchedCA); err != nil {
 					log.Printf("WARNING: CRL %s failed signature verification against CA %s: %v", file.Name(), matchedCA.Subject.CommonName, err)
+					fileStatuses[path] = report.FileStatus{Status: "SIGNATURE_INVALID", Purpose: "CRL"}
 					continue
 				}
 			} else {
 				log.Printf("WARNING: CRL %s has no matching CA for issuer %s — skipping (cannot verify signature)", file.Name(), crlIssuerCN)
+				fileStatuses[path] = report.FileStatus{Status: "NO_MATCHING_CA", Purpose: "CRL"}
 				continue
 			}
 
@@ -184,16 +190,25 @@ func (a *App) ReloadPKI() {
 			err = a.DB.ReplaceBulkRevocations(context.Background(), caName, revokedSerials)
 			if err != nil {
 				log.Printf("Failed to update database for CRL %s: %v", file.Name(), err)
+				fileStatuses[path] = report.FileStatus{Status: "DB_ERROR", Purpose: "CRL"}
 			} else {
 				log.Printf("Loaded CRL %s with %d revoked certs for CA %s (signature verified)", file.Name(), len(revokedSerials), caName)
-				loadedCRLs++
+				summary.CRLs++
+				summary.Revocations += len(revokedSerials)
+				fileStatuses[path] = report.FileStatus{Status: "LOADED", Purpose: "CRL"}
 			}
 		}
 	} // Close if crlFiles
 
-	if loadedCRLs == 0 {
-		log.Println("WARNING: No CRLs were loaded! The responder will not know of any revocations.")
+	// Display Data Folder Structure with statuses
+	if tree, err := report.GenerateTree(a.Config.DataDir, fileStatuses); err == nil {
+		log.Printf("Data Directory Structure:\n%s", tree)
+	} else {
+		log.Printf("Warning: failed to generate data directory tree: %v", err)
 	}
+
+	log.Println(report.FormatImportSummary(summary))
+	log.Println("--- PKI Reload Complete ---")
 }
 
 // isValidExt checks if a file extension is commonly used for certificates or keys.
@@ -269,7 +284,7 @@ func (a *App) SetupRoutes() *http.ServeMux {
 		}
 		mux.Handle(route, &multiDirHandler{prefix: route, dirs: unique})
 	}
-
+	
 	return mux
 }
 
@@ -302,7 +317,7 @@ func (h *multiDirHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if !strings.HasPrefix(resolved, absDir+string(os.PathSeparator)) && resolved != absDir {
-			log.Printf("Blocked path traversal attempt: %s resolved to %s (outside %s)", r.URL.Path, resolved, absDir) // #nosec G706 -- security audit log; URL is rejected, paths are system-resolved
+			log.Printf("Blocked path traversal attempt: %s resolved to %s (outside %s)", r.URL.Path, resolved, absDir)
 			http.NotFound(w, r)
 			return
 		}

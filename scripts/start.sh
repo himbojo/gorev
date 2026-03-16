@@ -31,4 +31,5 @@ fi
 
 export REDIS_PASSWORD
 
+echo "Starting gorev via docker compose (file: ${COMPOSE_FILE})..."
 exec docker compose -f "${COMPOSE_FILE}" up "$@"

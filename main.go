@@ -54,6 +54,7 @@ func main() {
 		WriteTimeout:      60 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
+	log.Printf("Starting server with handler: %T", httpServer.Handler)
 
 	// Graceful shutdown on SIGTERM/SIGINT
 	go func() {
