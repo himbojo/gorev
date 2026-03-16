@@ -84,6 +84,9 @@ If you are running the automated E2E tests, `docker-compose.test.yml` will mount
 
 # Test compose (explicit 'up')
 ./scripts/start.sh --test up -d --build
+
+# Stop services
+./scripts/start.sh down
 ```
 
 If you need a fixed password (e.g. for external monitoring or CI), set `REDIS_PASSWORD` in your shell before calling the script — it will be used as-is.
